@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Node cards — Sample 3 (HTML/CSS, tema oscuro)</title>
+<style>
+  :root{
+    --bg:#1a1b1e; --grid:#26282d;
+    --card:#24262b; --card2:#2b2d33; --border:rgba(255,255,255,.08);
+    --text:#e7edf9; --muted:#9aa0ab; --accent:#5b8def;
+  }
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);font-family:system-ui,sans-serif}
+  #canvas{position:fixed;inset:0;cursor:grab;background-image:radial-gradient(circle,var(--grid) 1.5px,transparent 1.5px);background-size:28px 28px}
+  #canvas.panning{cursor:grabbing}
+  #world{position:absolute;left:50%;top:50%;transform-origin:0 0}
+  #wires{position:absolute;left:0;top:0;overflow:visible;pointer-events:none}
+  #wires path{fill:none;stroke-width:2.2;opacity:.9}
+
+  .hud{position:fixed;left:16px;top:16px;z-index:2;color:var(--text);background:rgba(30,32,36,.9);padding:14px 16px;border:1px solid var(--border);border-radius:12px;max-width:460px;backdrop-filter:blur(10px)}
+  .hud p{margin:.35rem 0 0;color:#a7abb3;font-size:13px;line-height:1.45}
+
+  .node{position:absolute;width:232px;background:var(--card);border:1px solid var(--border);border-radius:12px;
+    box-shadow:0 14px 32px rgba(0,0,0,.5), 0 1px 0 rgba(255,255,255,.03) inset;overflow:hidden;user-select:none}
+  .node-header{display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:grab;background:var(--card2);border-bottom:1px solid var(--border)}
+  .node-header:active{cursor:grabbing}
+  .node-icon{width:14px;height:14px;border-radius:4px;flex:none}
+  .node-title{font-size:13px;font-weight:600;color:var(--text);flex:1;letter-spacing:.01em}
+  .node-check{width:16px;height:16px;border-radius:50%;background:rgba(126,224,138,.15);color:#7ee08a;font-size:10px;display:flex;align-items:center;justify-content:center;flex:none}
+  .node-menu{color:var(--muted);font-size:13px;letter-spacing:1.5px;flex:none}
+
+  .node-thumb{height:74px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);
+    background:repeating-linear-gradient(135deg, rgba(255,255,255,.025) 0 2px, transparent 2px 10px), linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.15))}
+
+  .node-body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px}
+  .section-label{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-top:2px}
+
+  .row{position:relative;display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#c7c9cf;min-height:18px;padding:0 2px}
+
+  .dot{position:absolute;width:10px;height:10px;border-radius:50%;background:var(--c);top:50%;transform:translateY(-50%);
+    box-shadow:0 0 0 3px var(--card), 0 0 0 4px rgba(255,255,255,.12)}
+  .dot.in{left:-17px}
+  .dot.out{right:-17px}
+
+  .field-pair{display:grid;grid-template-columns:1fr 18px 1fr;align-items:end;gap:4px}
+  .field-pair .field{display:flex;flex-direction:column;gap:3px;min-width:0}
+  .field-pair label{font-size:10px;color:var(--muted)}
+  .field-pair input{background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:6px;color:var(--text);
+    font-size:11px;padding:4px 6px;width:100%;box-sizing:border-box;font-family:inherit}
+  .link-icon{align-self:center;color:var(--muted);display:flex;justify-content:center}
+
+  .checkbox-row{gap:6px;justify-content:flex-start}
+  .checkbox-row input[type=checkbox]{accent-color:var(--accent);width:13px;height:13px;margin:0}
+  .checkbox-row label{font-size:12px;color:#c7c9cf}
+
+  .segmented{display:flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;width:100%}
+  .segmented button{flex:1;background:rgba(255,255,255,.03);border:none;color:var(--muted);padding:6px 0;font-size:12px;cursor:pointer;font-family:inherit}
+  .segmented button+button{border-left:1px solid var(--border)}
+  .segmented button.active{background:var(--accent);color:#fff}
+
+  .thumb-box{width:34px;height:34px;border-radius:6px;background:linear-gradient(135deg,#1fb6a8,#12746b)}
+  .thumb-transform{width:52px;height:40px;display:grid;grid-template-columns:repeat(4,1fr);gap:3px}
+  .thumb-transform i{background:#d85c8a;border-radius:2px;transform:rotate(0deg)}
+  .thumb-transform i:nth-child(2n){transform:translateY(5px)}
+  .thumb-output{display:flex;flex-direction:column;gap:5px;width:56px}
+  .thumb-output i{display:block;height:8px;border-radius:3px;background:linear-gradient(90deg,#e0545f,#8ee06a)}
+</style>
+</head>
+<body>
+  <div id="canvas">
+    <div id="world">
+      <svg id="wires" width="1" height="1"></svg>
+    </div>
+  </div>
+
+  <div class="hud">
+    <strong>Tarjetas de nodo en HTML/CSS — prueba pequeña (tema oscuro)</strong>
+    <p>Mismos 3 nodos del editor (Box, Transform, Output mesh) pero como tarjetas HTML reales encima de un canvas con pan/zoom en CSS: texto nítido, sombra, checkboxes nativos, campos enlazados (Width/Height) y conectores de color por tipo de dato. Arrastra la cabecera de un nodo para moverlo, el fondo vacío para desplazar, rueda para zoom. Es solo para comparar el acabado visual — todavía no crea cables nuevos ni lee el JSON del catálogo.</p>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const world = document.getElementById('world');
+    const wiresSvg = document.getElementById('wires');
+
+    const PORT_COLORS = { mesh: '#8ee06a', transform: '#d85c8a', scalar: '#e0545f', normal: '#4aa8e0', texture: '#e6d34a' };
+
+    function row(label, side, type) {
+      const c = type ? PORT_COLORS[type] : (side === 'out' ? PORT_COLORS.mesh : '#e0545f');
+      const dotHtml = (kind) => `<span class="dot ${kind}" data-label="${label}" data-kind="${kind}" style="--c:${c}"></span>`;
+      return `<div class="row">
+        <span class="row-label">${label}</span>
+        ${side === 'in' || side === 'both' ? dotHtml('in') : ''}
+        ${side === 'out' || side === 'both' ? dotHtml('out') : ''}
+      </div>`;
+    }
+
+    function fieldPair(labelA, valA, labelB, valB) {
+      return `<div class="field-pair">
+        <div class="field"><label>${labelA}</label><input type="number" value="${valA}"></div>
+        <div class="link-icon">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M8 12h8"/><rect x="2" y="7" width="8" height="10" rx="3"/><rect x="14" y="7" width="8" height="10" rx="3"/></svg>
+        </div>
+        <div class="field"><label>${labelB}</label><input type="number" value="${valB}"></div>
+      </div>`;
+    }
+
+    function checkboxRow(label, checked, port) {
+      const dot = port ? `<span class="dot in" data-label="${label}" data-kind="in" style="--c:${PORT_COLORS[port]}"></span>` : '';
+      return `<div class="row checkbox-row">
+        <input type="checkbox" ${checked ? 'checked' : ''}/><label>${label}</label>${dot}
+      </div>`;
+    }
+
+    function nodeHtml({ id, x, y, color, title, thumb, body }) {
+      return `<div class="node" data-id="${id}" style="left:${x}px;top:${y}px">
+        <div class="node-header">
+          <span class="node-icon" style="background:${color}"></span>
+          <span class="node-title">${title}</span>
+          <span class="node-check">✓</span>
+          <span class="node-menu">⋯</span>
+        </div>
+        <div class="node-thumb">${thumb}</div>
+        <div class="node-body">${body}</div>
+      </div>`;
+    }
+
+    const NODES = [
+      {
+        id: 'box1', x: -420, y: -60, color: '#1fb6a8', title: 'Box',
+        thumb: '<div class="thumb-box"></div>',
+        body: [
+          row('Mesh', 'out', 'mesh'),
+          row('MRS', 'out', 'transform'),
+          '<div class="section-label">Size</div>',
+          fieldPair('Width', 30, 'Height', 30),
+          row('Length', 'in'),
+          checkboxRow('Rotation', false),
+        ].join(''),
+      },
+      {
+        id: 'transform1', x: -120, y: -170, color: '#d85c8a', title: 'Transform',
+        thumb: '<div class="thumb-transform">' + Array.from({ length: 8 }).map(() => '<i></i>').join('') + '</div>',
+        body: [
+          row('Input', 'in', 'transform'),
+          row('Scale', 'in', 'scalar'),
+          row('Vector Position', 'in', 'transform'),
+          checkboxRow('Offset', false),
+          checkboxRow('Resize', true),
+          row('Coordinate', 'in', 'normal'),
+          row('Output', 'out', 'mesh'),
+        ].join(''),
+      },
+      {
+        id: 'output1', x: 220, y: -60, color: '#e0545f', title: 'Output mesh',
+        thumb: '<div class="thumb-output"><i></i><i></i><i></i></div>',
+        body: [
+          row('Mesh', 'in', 'mesh'),
+          row('MRS', 'in', 'transform'),
+          '<div class="section-label">Align content</div>',
+          `<div class="row"><div class="segmented">
+            <button>◧</button><button class="active">▣</button><button>◨</button>
+          </div></div>`,
+          row('Mesh', 'out', 'mesh'),
+        ].join(''),
+      },
+    ];
+
+    const WIRES = [
+      { from: ['box1', 'Mesh'], to: ['output1', 'Mesh'] },
+      { from: ['box1', 'MRS'], to: ['transform1', 'Input'] },
+      { from: ['transform1', 'Output'], to: ['output1', 'MRS'] },
+    ];
+
+    NODES.forEach((n) => world.insertAdjacentHTML('beforeend', nodeHtml(n)));
+    WIRES.forEach((_, i) => {
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.dataset.wire = i;
+      wiresSvg.appendChild(path);
+    });
+
+    function dotWorldPos(nodeEl, dotEl) {
+      const nx = parseFloat(nodeEl.style.left);
+      const ny = parseFloat(nodeEl.style.top);
+      return { x: nx + dotEl.offsetLeft + dotEl.offsetWidth / 2, y: ny + dotEl.offsetTop + dotEl.offsetHeight / 2 };
+    }
+
+    function updateWires() {
+      WIRES.forEach((w, i) => {
+        const fromNode = world.querySelector(`.node[data-id="${w.from[0]}"]`);
+        const fromDot = fromNode.querySelector(`.dot[data-kind="out"][data-label="${w.from[1]}"]`);
+        const toNode = world.querySelector(`.node[data-id="${w.to[0]}"]`);
+        const toDot = toNode.querySelector(`.dot[data-kind="in"][data-label="${w.to[1]}"]`);
+        const a = dotWorldPos(fromNode, fromDot);
+        const b = dotWorldPos(toNode, toDot);
+        const bend = Math.max(60, Math.abs(b.x - a.x) * 0.5);
+        const path = wiresSvg.querySelector(`path[data-wire="${i}"]`);
+        path.setAttribute('d', `M ${a.x} ${a.y} C ${a.x + bend} ${a.y}, ${b.x - bend} ${b.y}, ${b.x} ${b.y}`);
+        path.setAttribute('stroke', getComputedStyle(fromDot).getPropertyValue('--c'));
+      });
+    }
+
+    // --- Pan / zoom del canvas (CSS transform) ---
+    let panX = 0, panY = 0, zoom = 1;
+    function applyTransform() {
+      world.style.transform = `translate(${panX}px,${panY}px) scale(${zoom})`;
+    }
+    applyTransform();
+
+    let panning = false, panStart = { x: 0, y: 0 }, panOrigin = { x: 0, y: 0 };
+    let dragNode = null, dragStart = { x: 0, y: 0 }, dragOrigin = { x: 0, y: 0 };
+
+    canvas.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.node')) return;
+      panning = true;
+      panStart = { x: e.clientX, y: e.clientY };
+      panOrigin = { x: panX, y: panY };
+      canvas.classList.add('panning');
+    });
+
+    world.querySelectorAll('.node-header').forEach((header) => {
+      header.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        const node = header.closest('.node');
+        dragNode = node;
+        dragStart = { x: e.clientX, y: e.clientY };
+        dragOrigin = { x: parseFloat(node.style.left), y: parseFloat(node.style.top) };
+        node.style.zIndex = 10;
+      });
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (panning) {
+        panX = panOrigin.x + (e.clientX - panStart.x);
+        panY = panOrigin.y + (e.clientY - panStart.y);
+        applyTransform();
+        return;
+      }
+      if (dragNode) {
+        const dx = (e.clientX - dragStart.x) / zoom;
+        const dy = (e.clientY - dragStart.y) / zoom;
+        dragNode.style.left = dragOrigin.x + dx + 'px';
+        dragNode.style.top = dragOrigin.y + dy + 'px';
+        updateWires();
+      }
+    });
+
+    window.addEventListener('pointerup', () => {
+      panning = false;
+      dragNode = null;
+      canvas.classList.remove('panning');
+    });
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const prevZoom = zoom;
+      zoom = Math.min(2.5, Math.max(0.4, zoom * (1 - e.deltaY * 0.0015)));
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left - rect.width / 2;
+      const my = e.clientY - rect.top - rect.height / 2;
+      panX = mx - (mx - panX) * (zoom / prevZoom);
+      panY = my - (my - panY) * (zoom / prevZoom);
+      applyTransform();
+    }, { passive: false });
+
+    updateWires();
+  </script>
+</body>
+</html>
