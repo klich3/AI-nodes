@@ -389,7 +389,9 @@ export class NodeView {
 		const redraw = () => {
 			ctx.clearRect(0, 0, 64, 64);
 			const r = 12;
-			ctx.fillStyle = state.checked ? hexToCss(CARD_PALETTE.accent) : hexToCss(CARD_PALETTE.checkboxOff);
+			ctx.fillStyle = state.checked
+				? hexToCss(CARD_PALETTE.accent)
+				: hexToCss(CARD_PALETTE.checkboxOff);
 			ctx.strokeStyle = state.checked
 				? hexToCss(CARD_PALETTE.accent)
 				: hexToCss(CARD_PALETTE.border);
@@ -464,7 +466,9 @@ export class NodeView {
 			const redraw = () => {
 				const active = state.active === i;
 				ctx.clearRect(0, 0, 128, 64);
-				ctx.fillStyle = active ? hexToCss(CARD_PALETTE.accent) : hexToCss(CARD_PALETTE.dropdownOff);
+				ctx.fillStyle = active
+					? hexToCss(CARD_PALETTE.accent)
+					: hexToCss(CARD_PALETTE.dropdownOff);
 				ctx.beginPath();
 				ctx.roundRect(2, 8, 124, 48, 8);
 				ctx.fill();
