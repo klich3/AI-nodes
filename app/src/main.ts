@@ -75,7 +75,6 @@ new NodeTypeEditor({
   onCreate: (key, def) => palette.addItem(key, def),
 });
 
-(window as any).__debug = { nodes, cables, camera, THREE };
 
 function animate(): void {
   requestAnimationFrame(animate);
