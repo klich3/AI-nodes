@@ -1,40 +1,68 @@
 <!doctype html>
 <html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Node Editor (Vite + TypeScript)</title>
-</head>
-<body>
-  <div id="app"></div>
-  <div class="hud">
-    <strong>Node editor (Vite + TypeScript)</strong>
-    <p>Tarjetas con sombra, miniatura, checkbox y grupo segmentado clicables, y campo enlazado (estilo sample4.html), sobre la misma lógica de sample2.html reorganizada en módulos TS. Arrastra un item del listado hasta el canvas para soltarlo donde quieras. Arrastra desde un puerto de salida y suelta en uno de entrada (mismo color) para conectar. "Crear tipo de nodo" genera un tipo nuevo y el JSON correspondiente. Arrastra el fondo para desplazar el canvas; rueda del ratón para zoom.</p>
-  </div>
-  <div class="palette">
-    <strong>Añadir nodo</strong>
-    <div class="palette-list" id="palette-list"></div>
-    <div class="palette-count" id="palette-count"></div>
-    <details class="node-editor" id="node-type-editor">
-      <summary>+ Crear tipo de nodo</summary>
-      <div class="node-editor-body">
-        <label>Título
-          <input type="text" id="ne-title" placeholder="Mi nodo" />
-        </label>
-        <label>Color de cabecera
-          <input type="color" id="ne-color" value="#5b8def" />
-        </label>
-        <div class="ne-rows" id="ne-rows"></div>
-        <button type="button" id="ne-add-row">+ Añadir fila (puerto)</button>
-        <button type="button" id="ne-create" class="ne-create">Crear nodo</button>
-        <pre class="ne-json" id="ne-json"></pre>
-      </div>
-    </details>
-  </div>
-  <div class="delete-zone" id="delete-zone">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-    <span>Soltar aquí para eliminar</span>
-  </div>
-  <script type="module" src="/src/main.ts"></script>
-</body>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Node Editor (Vite + TypeScript)</title>
+	</head>
+	<body>
+		<div id="app"></div>
+		<div class="hud">
+			<strong>Node editor (Vite + TypeScript)</strong>
+			<p>
+				Tarjetas con sombra, miniatura, checkbox y grupo segmentado clicables, y
+				campo enlazado (estilo sample4.html), sobre la misma lógica de
+				sample2.html reorganizada en módulos TS. Arrastra un item del listado
+				hasta el canvas para soltarlo donde quieras. Arrastra desde un puerto de
+				salida y suelta en uno de entrada (mismo color) para conectar. "Crear
+				tipo de nodo" genera un tipo nuevo y el JSON correspondiente. Arrastra
+				el fondo para desplazar el canvas; rueda del ratón para zoom.
+			</p>
+		</div>
+		<div class="palette">
+			<strong>Añadir nodo</strong>
+			<div class="palette-list" id="palette-list"></div>
+			<div class="palette-count" id="palette-count"></div>
+			<details class="node-editor" id="node-type-editor">
+				<summary>+ Crear tipo de nodo</summary>
+				<div class="node-editor-body">
+					<label
+						>Título
+						<input type="text" id="ne-title" placeholder="Mi nodo" />
+					</label>
+					<label
+						>Color de cabecera
+						<input type="color" id="ne-color" value="#5b8def" />
+					</label>
+					<div class="ne-rows" id="ne-rows"></div>
+					<button type="button" id="ne-add-row">+ Añadir fila (puerto)</button>
+					<button type="button" id="ne-create" class="ne-create">
+						Crear nodo
+					</button>
+					<pre class="ne-json" id="ne-json"></pre>
+				</div>
+			</details>
+		</div>
+		<div class="delete-zone" id="delete-zone">
+			<svg
+				width="22"
+				height="22"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+			>
+				<path d="M3 6h18" />
+				<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+				<path d="M10 11v6" />
+				<path d="M14 11v6" />
+				<path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+			</svg>
+			<span>Soltar aquí para eliminar</span>
+		</div>
+		<div class="toolbar" id="toolbar"></div>
+		<script type="module" src="/src/main.ts"></script>
+	</body>
 </html>
