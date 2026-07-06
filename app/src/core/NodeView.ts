@@ -14,7 +14,7 @@ import {
   previewThumb,
 } from './shapes';
 import { hexToInt, DEFAULT_PORT_COLOR, type PortKind } from './colors';
-import { CARD_PALETTE, hexToCss } from './constants';
+import { CARD_PALETTE, hexToCss, NODE_Z_LIFTED } from './constants';
 import type { PortRegistry } from './PortRegistry';
 import type { GraphConfig, RowDef, PortRowDef, ThumbKind } from './types';
 
@@ -92,14 +92,31 @@ function buildChromeMesh(w: number, h: number, headerH: number, thumbH: number):
 // y un cuerpo de "bloques": filas de puerto normales más secciones, pares de campo
 // enlazados, checkboxes y grupos segmentados (estos tres últimos son clicables de
 // verdad vía raycasting, ver InputController). Estilo tomado de sample4.html.
+// Desplazamiento/opacidad de la sombra en reposo vs. "levantada del todo" (liftAmount=1):
+// una sombra más lejana y más oscura vende la sensación de que la tarjeta flota más alto,
+// ya que la cámara ortográfica no puede mostrarlo con perspectiva real.
+const SHADOW_REST = { x: 5, y: -12, opacity: 0.78 };
+const SHADOW_LIFTED = { x: 13, y: -26, opacity: 1 };
+const LIFT_SCALE = 0.045;
+
 export class NodeView {
   readonly group: THREE.Group;
   readonly w: number;
   readonly h: number;
   vx = 0;
   vy = 0;
+  // Resorte 0↔1 que impulsa el "levantar" (grab) y el "caer con rebote" (drop);
+  // ver systems/ElevationSystem.ts. Puede pasarse ligeramente de 1 o bajar de 0
+  // durante el rebote: la posición Z se recorta a ese rango, pero la escala y la
+  // sombra usan el valor sin recortar para que el rebote se note.
+  liftAmount = 0;
+  liftVel = 0;
+  liftTarget = 0;
   readonly inPorts: PortObject[] = [];
   readonly outPorts: PortObject[] = [];
+
+  private readonly scene: THREE.Scene;
+  private readonly shadow: THREE.Mesh;
 
   constructor(scene: THREE.Scene, config: GraphConfig, portRegistry: PortRegistry, opts: NodeViewOptions) {
     const { x, y, w = 236, title, color, rows = [], thumb } = opts;
@@ -111,15 +128,16 @@ export class NodeView {
 
     this.w = w;
     this.h = h;
+    this.scene = scene;
     this.portRegistry = portRegistry;
 
     this.group = new THREE.Group();
     this.group.position.set(x, y, 0);
     scene.add(this.group);
 
-    const shadow = shadowMesh(w, h);
-    shadow.position.set(5, -12, -6);
-    this.group.add(shadow);
+    this.shadow = shadowMesh(w, h);
+    this.shadow.position.set(SHADOW_REST.x, SHADOW_REST.y, -6);
+    this.group.add(this.shadow);
 
     this.group.add(buildChromeMesh(w, h, headerH, thumbH));
 
@@ -127,7 +145,7 @@ export class NodeView {
     icon.position.set(-w / 2 + 22, h / 2 - headerH / 2, 2);
     this.group.add(icon);
 
-    const titleSprite = labelSprite(title, { size: 40, weight: 700, scaleW: 150, scaleH: 26, canvasW: 480, canvasH: 90 });
+    const titleSprite = labelSprite(title, { size: 53, weight: 700, scaleW: 150, scaleH: 26 });
     titleSprite.position.set(-w / 2 + 34, h / 2 - headerH / 2, 2);
     this.group.add(titleSprite);
 
@@ -156,7 +174,7 @@ export class NodeView {
 
   private buildBlock(config: GraphConfig, block: RowDef, midY: number, w: number): void {
     if (block.kind === 'section') {
-      const sp = labelSprite(block.label.toUpperCase(), { size: 30, weight: 700, color: CARD_PALETTE.muted, scaleW: 150, scaleH: 16, canvasW: 320, canvasH: 60 });
+      const sp = labelSprite(block.label.toUpperCase(), { size: 28, weight: 700, color: CARD_PALETTE.muted, scaleW: 150, scaleH: 16 });
       sp.position.set(-w / 2 + 22, midY, 2);
       this.group.add(sp);
       return;
@@ -178,7 +196,7 @@ export class NodeView {
 
   private buildPortRow(config: GraphConfig, row: PortRowDef, midY: number, w: number): void {
     if (row.label) {
-      const sp = labelSprite(row.label, { size: 40, weight: 500, color: '#c7c9cf', scaleW: 150, scaleH: 22, canvasW: 480, canvasH: 90 });
+      const sp = labelSprite(row.label, { size: 46, weight: 500, color: '#c7c9cf', scaleW: 150, scaleH: 22 });
       sp.position.set(-w / 2 + 22, midY, 2);
       this.group.add(sp);
     }
@@ -195,14 +213,14 @@ export class NodeView {
     const mk = (field: typeof block.a, cx: number) => {
       const g = new THREE.Group();
       g.position.set(cx, midY, 2);
-      const lbl = labelSprite(field.label, { size: 26, weight: 500, color: CARD_PALETTE.muted, scaleW: chipW, scaleH: 12, canvasW: 220, canvasH: 50 });
+      const lbl = labelSprite(field.label, { size: 23, weight: 500, color: CARD_PALETTE.muted, scaleW: chipW, scaleH: 12 });
       lbl.center.set(0, 0.5);
       lbl.position.set(-chipW / 2, 12, 0);
       g.add(lbl);
       const chip = roundedRectMesh(chipW, 20, 5, 0x33353c);
       chip.position.set(0, -4, 0);
       g.add(chip);
-      const val = labelSprite(String(field.value), { size: 30, weight: 600, color: CARD_PALETTE.text, scaleW: chipW - 10, scaleH: 14, canvasW: 220, canvasH: 60 });
+      const val = labelSprite(String(field.value), { size: 30, weight: 600, color: CARD_PALETTE.text, scaleW: chipW - 10, scaleH: 14 });
       val.center.set(0, 0.5);
       val.position.set(-chipW / 2 + 8, -4, 0.1);
       g.add(val);
@@ -267,7 +285,7 @@ export class NodeView {
     this.group.add(mesh);
     redraw();
 
-    const lbl = labelSprite(block.label, { size: 40, weight: 500, color: '#c7c9cf', scaleW: 150, scaleH: 22, canvasW: 480, canvasH: 90 });
+    const lbl = labelSprite(block.label, { size: 46, weight: 500, color: '#c7c9cf', scaleW: 150, scaleH: 22 });
     lbl.position.set(-w / 2 + 22 + size + 8, midY, 2);
     this.group.add(lbl);
   }
@@ -325,5 +343,42 @@ export class NodeView {
   getPort(label: string, kind: PortKind): PortObject | null {
     const list = kind === 'out' ? this.outPorts : this.inPorts;
     return list.find((p) => p.userData.port.label === label) ?? null;
+  }
+
+  // Traduce liftAmount (el resorte 0↔1, ver ElevationSystem) a los tres efectos
+  // visuales de "levantar"/"soltar con rebote": la Z real (recortada a [0,1] para
+  // no cruzarse nunca con los cables, que viven en z negativa), un ligero aumento
+  // de escala, y una sombra más lejana/oscura — el truco clásico para simular
+  // profundidad en una cámara ortográfica que no tiene perspectiva real.
+  applyLift(): void {
+    const t = this.liftAmount;
+    this.group.position.z = THREE.MathUtils.clamp(t, 0, 1) * NODE_Z_LIFTED;
+    this.group.scale.setScalar(1 + t * LIFT_SCALE);
+    this.shadow.position.set(
+      SHADOW_REST.x + (SHADOW_LIFTED.x - SHADOW_REST.x) * t,
+      SHADOW_REST.y + (SHADOW_LIFTED.y - SHADOW_REST.y) * t,
+      -6
+    );
+    const mat = this.shadow.material as THREE.MeshBasicMaterial;
+    mat.opacity = THREE.MathUtils.clamp(SHADOW_REST.opacity + (SHADOW_LIFTED.opacity - SHADOW_REST.opacity) * t, 0, 1);
+  }
+
+  // Saca el nodo de la escena y libera geometrías/texturas. Desregistra también
+  // sus puertos del InstancedMesh compartido (si no, quedarían "puntos fantasma"
+  // congelados en su última posición).
+  dispose(): void {
+    [...this.inPorts, ...this.outPorts].forEach((p) => this.portRegistry.unregister(p));
+    this.group.traverse((obj) => {
+      const mesh = obj as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      mesh.geometry?.dispose();
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      materials.forEach((m) => {
+        const withMap = m as THREE.MeshBasicMaterial;
+        withMap.map?.dispose();
+        m.dispose();
+      });
+    });
+    this.scene.remove(this.group);
   }
 }

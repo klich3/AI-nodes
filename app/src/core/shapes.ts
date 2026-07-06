@@ -31,14 +31,25 @@ export interface LabelSpriteOptions {
   size?: number;
   weight?: number;
   color?: string;
-  canvasW?: number;
-  canvasH?: number;
   scaleW?: number;
   scaleH?: number;
 }
 
+// Píxeles de canvas por unidad de mundo del sprite. Antes canvasW/canvasH y
+// scaleW/scaleH se elegían por separado y casi nunca compartían proporción:
+// THREE.Sprite estira ese canvas para llenar exactamente scaleW×scaleH, así que
+// cualquier descuadre entre "proporción del canvas" y "proporción del sprite"
+// deformaba el texto (normalmente aplastado en altura). Derivar el canvas a
+// partir de scaleW/scaleH con un único factor de densidad hace que ambas
+// proporciones coincidan siempre, sin más que elegir bien `size`.
+const DENSITY = 3.5;
+
 export function labelSprite(text: string, opts: LabelSpriteOptions = {}): THREE.Sprite {
-  const { size = 30, weight = 700, color = '#e9e9ec', canvasW = 512, canvasH = 96 } = opts;
+  const { size = 30, weight = 700, color = '#e9e9ec' } = opts;
+  const scaleW = opts.scaleW ?? 210;
+  const scaleH = opts.scaleH ?? 40;
+  const canvasW = Math.round(scaleW * DENSITY);
+  const canvasH = Math.round(scaleH * DENSITY);
   const canvas = document.createElement('canvas');
   canvas.width = canvasW;
   canvas.height = canvasH;
@@ -46,11 +57,11 @@ export function labelSprite(text: string, opts: LabelSpriteOptions = {}): THREE.
   ctx.font = `${weight} ${size}px system-ui, Arial`;
   ctx.fillStyle = color;
   ctx.textBaseline = 'middle';
-  ctx.fillText(text, 6, canvasH / 2 + 2);
+  ctx.fillText(text, 6, canvasH / 2 + 1);
   const tex = new THREE.CanvasTexture(canvas);
   const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
   const sprite = new THREE.Sprite(mat);
-  sprite.scale.set(opts.scaleW ?? 210, opts.scaleH ?? 40, 1);
+  sprite.scale.set(scaleW, scaleH, 1);
   sprite.center.set(0, 0.5);
   return sprite;
 }

@@ -58,4 +58,25 @@ export class PortRegistry {
     }
     this.mesh.instanceMatrix.needsUpdate = true;
   }
+
+  // Libera la instancia de un puerto eliminado (nodo borrado): mueve la última
+  // instancia activa al hueco que deja y reduce el conteo, en vez de dejar un
+  // "punto fantasma" congelado en su última posición.
+  unregister(portObject: THREE.Object3D): void {
+    const idx = this.ports.indexOf(portObject);
+    if (idx === -1) return;
+    const last = this.nextIndex - 1;
+    if (idx !== last) {
+      this.ports[idx] = this.ports[last];
+      this.mesh.getMatrixAt(last, _matrix);
+      this.mesh.setMatrixAt(idx, _matrix);
+      this.mesh.getColorAt(last, _color);
+      this.mesh.setColorAt(idx, _color);
+    }
+    this.ports.pop();
+    this.nextIndex--;
+    this.mesh.count = this.nextIndex;
+    this.mesh.instanceMatrix.needsUpdate = true;
+    if (this.mesh.instanceColor) this.mesh.instanceColor.needsUpdate = true;
+  }
 }

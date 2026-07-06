@@ -5,6 +5,7 @@ import { buildGraph } from './core/Graph';
 import { PortRegistry } from './core/PortRegistry';
 import { InputController } from './systems/InputController';
 import { integrateNodeMotion } from './systems/PhysicsSystem';
+import { integrateNodeLift } from './systems/ElevationSystem';
 import { Palette } from './ui/Palette';
 import { NodeTypeEditor } from './ui/NodeTypeEditor';
 import './style.css';
@@ -47,7 +48,15 @@ const portRegistry = new PortRegistry(scene);
 
 const { nodes, cables } = buildGraph(scene, config, portRegistry);
 
-const input = new InputController({ renderer, camera, scene, nodes, cables });
+const input = new InputController({
+  renderer,
+  camera,
+  scene,
+  nodes,
+  cables,
+  deleteZoneEl: document.getElementById('delete-zone')!,
+  onNodeDeleted: () => palette.updateCount(),
+});
 
 const palette = new Palette({
   scene,
@@ -66,9 +75,12 @@ new NodeTypeEditor({
   onCreate: (key, def) => palette.addItem(key, def),
 });
 
+(window as any).__debug = { nodes, cables, camera, THREE };
+
 function animate(): void {
   requestAnimationFrame(animate);
   integrateNodeMotion(nodes);
+  integrateNodeLift(nodes);
   portRegistry.updateAll();
   cables.forEach((c) => c.update());
   renderer.render(scene, camera);

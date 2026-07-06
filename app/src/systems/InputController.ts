@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import { NodeView } from '../core/NodeView';
 import { Cable, type CableContext } from '../core/Cable';
 import { screenToWorld } from '../core/viewport';
-import { NODE_Z, NODE_Z_LIFTED, CABLE_Z, CABLE_Z_LIFTED, PLUG_Z, PLUG_Z_LIFTED } from '../core/constants';
+import { CABLE_Z, CABLE_Z_LIFTED, PLUG_Z, PLUG_Z_LIFTED } from '../core/constants';
 import { settleOverlaps } from './PhysicsSystem';
+import { setNodeLift } from './ElevationSystem';
 
 export interface InputControllerDeps {
   renderer: THREE.WebGLRenderer;
@@ -11,12 +12,15 @@ export interface InputControllerDeps {
   scene: THREE.Scene;
   nodes: NodeView[];
   cables: Cable[];
+  deleteZoneEl: HTMLElement;
+  onNodeDeleted?: () => void;
 }
 
 // Reúne toda la interacción de puntero: pan de canvas, zoom, arrastre de nodos,
-// creación/reconexión de cables con imán, y elevación de capa mientras se arrastra.
-// También expone beginDragNode() para que el listado de nodos pueda entregarle un
-// nodo recién creado y que el usuario lo siga arrastrando sin soltar el ratón.
+// creación/reconexión de cables con imán, elevación (con rebote) mientras se
+// arrastra, y soltar sobre la papelera para borrar. También expone
+// beginDragNode() para que el listado de nodos le entregue un nodo recién
+// creado y el usuario lo siga arrastrando sin soltar el ratón.
 export class InputController {
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointer = new THREE.Vector2();
@@ -26,6 +30,7 @@ export class InputController {
   private panning = false;
   private readonly panStart = { x: 0, y: 0 };
   private readonly camStart = new THREE.Vector3();
+  private overDeleteZone = false;
 
   constructor(private readonly deps: InputControllerDeps) {
     deps.renderer.domElement.style.cursor = 'grab';
@@ -49,6 +54,7 @@ export class InputController {
     node.vy = 0;
     this.dragOffset.set(0, 0, 0);
     this.setNodeElevated(node, true);
+    this.showDeleteZone();
   }
 
   private hitTest(x: number, y: number): THREE.Intersection[] {
@@ -67,7 +73,7 @@ export class InputController {
   }
 
   private setNodeElevated(node: NodeView, on: boolean): void {
-    node.group.position.z = on ? NODE_Z_LIFTED : NODE_Z;
+    setNodeLift(node, on);
     this.deps.cables.forEach((c) => {
       if (!this.cableTouchesNode(c, node)) return;
       c.line.position.z = on ? CABLE_Z_LIFTED : CABLE_Z;
@@ -82,6 +88,33 @@ export class InputController {
       cable.dispose();
       cables.splice(idx, 1);
     }
+  }
+
+  // Borra un nodo: primero sus cables (los desconecta y libera), luego el propio
+  // nodo (fuera del array + fuera de escena + geometrías/texturas liberadas).
+  private deleteNode(node: NodeView): void {
+    const { nodes, cables } = this.deps;
+    [...cables].forEach((c) => {
+      if (this.cableTouchesNode(c, node)) this.detachCable(c);
+    });
+    const idx = nodes.indexOf(node);
+    if (idx !== -1) nodes.splice(idx, 1);
+    node.dispose();
+    this.deps.onNodeDeleted?.();
+  }
+
+  private isOverDeleteZone(x: number, y: number): boolean {
+    const rect = this.deps.deleteZoneEl.getBoundingClientRect();
+    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+  }
+
+  private showDeleteZone(): void {
+    this.deps.deleteZoneEl.classList.add('visible');
+  }
+
+  private hideDeleteZone(): void {
+    this.deps.deleteZoneEl.classList.remove('visible', 'active');
+    this.overDeleteZone = false;
   }
 
   private readonly onPointerDown = (e: PointerEvent): void => {
@@ -137,6 +170,7 @@ export class InputController {
       node.vy = 0;
       this.dragOffset.copy(node.group.position).sub(screenToWorld(camera, e.clientX, e.clientY));
       this.setNodeElevated(node, true);
+      this.showDeleteZone();
     }
   };
 
@@ -149,12 +183,15 @@ export class InputController {
       camera.position.y = this.camStart.y + (e.clientY - this.panStart.y) * worldPerPixelY;
       return;
     }
-    const p = screenToWorld(camera, e.clientX, e.clientY);
     if (this.dragNode) {
+      this.overDeleteZone = this.isOverDeleteZone(e.clientX, e.clientY);
+      this.deps.deleteZoneEl.classList.toggle('active', this.overDeleteZone);
+      const p = screenToWorld(camera, e.clientX, e.clientY);
       this.dragNode.group.position.x = p.x + this.dragOffset.x;
       this.dragNode.group.position.y = p.y + this.dragOffset.y;
+      return;
     }
-    if (this.liveCable) this.liveCable.setLive(p);
+    if (this.liveCable) this.liveCable.setLive(screenToWorld(camera, e.clientX, e.clientY));
   };
 
   private readonly onPointerUp = (): void => {
@@ -176,9 +213,16 @@ export class InputController {
     }
     this.liveCable = null;
     if (this.dragNode) {
-      this.setNodeElevated(this.dragNode, false);
-      settleOverlaps(this.deps.nodes, this.dragNode);
+      const node = this.dragNode;
+      const dropInDeleteZone = this.overDeleteZone;
+      this.hideDeleteZone();
       this.dragNode = null;
+      if (dropInDeleteZone) {
+        this.deleteNode(node);
+      } else {
+        this.setNodeElevated(node, false);
+        settleOverlaps(this.deps.nodes, node);
+      }
     }
   };
 
