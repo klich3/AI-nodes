@@ -1,3 +1,13 @@
+/*
+█▀ █▄█ █▀▀ █░█ █▀▀ █░█
+▄█ ░█░ █▄▄ █▀█ ██▄ ▀▄▀
+
+Author: <Anton Sychev> (anton at sychev dot xyz)
+InputController.ts (c) 2026
+Created:  2026-07-07 04:40:54 
+Desc: controller de input
+*/
+
 import * as THREE from "three";
 import { NodeView } from "../core/NodeView";
 import { Cable, type CableContext } from "../core/Cable";

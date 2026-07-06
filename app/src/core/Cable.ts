@@ -1,3 +1,12 @@
+/*
+█▀ █▄█ █▀▀ █░█ █▀▀ █░█
+▄█ ░█░ █▄▄ █▀█ ██▄ ▀▄▀
+
+Author: <Anton Sychev> (anton at sychev dot xyz)
+Cable.ts (c) 2026
+Created:  2026-07-07 04:39:46 
+Desc: Cable fisico con simulacion Verlet entre puertos de nodos
+*/
 import * as THREE from "three";
 import {
 	makePlugMesh,

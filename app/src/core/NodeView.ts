@@ -1,3 +1,12 @@
+/*
+█▀ █▄█ █▀▀ █░█ █▀▀ █░█
+▄█ ░█░ █▄▄ █▀█ ██▄ ▀▄▀
+
+Author: <Anton Sychev> (anton at sychev dot xyz)
+NodeView.ts (c) 2026
+Created:  2026-07-07 04:39:50 
+Desc: Vista de nodo con geometria mergeada y puertos interactivos
+*/
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import {
@@ -269,7 +278,7 @@ export class NodeView {
 			const sp = labelSprite(row.label, {
 				size: 46,
 				weight: 500,
-				color: "#c7c9cf",
+				color: CARD_PALETTE.labelSecondary,
 				scaleW: 150,
 				scaleH: 22,
 			});
@@ -320,7 +329,7 @@ export class NodeView {
 			lbl.center.set(0, 0.5);
 			lbl.position.set(-chipW / 2, 12, 0);
 			g.add(lbl);
-			const chip = roundedRectMesh(chipW, 20, 5, 0x33353c);
+			const chip = roundedRectMesh(chipW, 20, 5, CARD_PALETTE.chipBg);
 			chip.position.set(0, -4, 0);
 			g.add(chip);
 			const val = labelSprite(String(field.value), {
@@ -380,10 +389,10 @@ export class NodeView {
 		const redraw = () => {
 			ctx.clearRect(0, 0, 64, 64);
 			const r = 12;
-			ctx.fillStyle = state.checked ? hexToCss(CARD_PALETTE.accent) : "#33353c";
+			ctx.fillStyle = state.checked ? hexToCss(CARD_PALETTE.accent) : hexToCss(CARD_PALETTE.checkboxOff);
 			ctx.strokeStyle = state.checked
 				? hexToCss(CARD_PALETTE.accent)
-				: "#4a4d55";
+				: hexToCss(CARD_PALETTE.border);
 			ctx.lineWidth = 4;
 			ctx.beginPath();
 			ctx.moveTo(8 + r, 8);
@@ -427,7 +436,7 @@ export class NodeView {
 		const lbl = labelSprite(block.label, {
 			size: 46,
 			weight: 500,
-			color: "#c7c9cf",
+			color: CARD_PALETTE.labelSecondary,
 			scaleW: 150,
 			scaleH: 22,
 		});
@@ -455,7 +464,7 @@ export class NodeView {
 			const redraw = () => {
 				const active = state.active === i;
 				ctx.clearRect(0, 0, 128, 64);
-				ctx.fillStyle = active ? hexToCss(CARD_PALETTE.accent) : "#2f3138";
+				ctx.fillStyle = active ? hexToCss(CARD_PALETTE.accent) : hexToCss(CARD_PALETTE.dropdownOff);
 				ctx.beginPath();
 				ctx.roundRect(2, 8, 124, 48, 8);
 				ctx.fill();

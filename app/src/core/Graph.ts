@@ -1,3 +1,12 @@
+/*
+█▀ █▄█ █▀▀ █░█ █▀▀ █░█
+▄█ ░█░ █▄▄ █▀█ ██▄ ▀▄▀
+
+Author: <Anton Sychev> (anton at sychev dot xyz)
+Graph.ts (c) 2026
+Created:  2026-07-07 04:39:49 
+Desc: Construccion del grafo desde configuracion JSON
+*/
 import * as THREE from "three";
 import { NodeView } from "./NodeView";
 import { Cable, type CableContext } from "./Cable";

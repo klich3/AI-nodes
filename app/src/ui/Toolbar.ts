@@ -1,5 +1,13 @@
-// Barra de herramientas flotante con acciones: relajar cables, tensar cables, reordenar nodos,
-// exportar e importar JSON.
+/*
+█▀ █▄█ █▀▀ █░█ █▀▀ █░█
+▄█ ░█░ █▄▄ █▀█ ██▄ ▀▄▀
+
+Author: <Anton Sychev> (anton at sychev dot xyz)
+Toolbar.ts (c) 2026
+Created:  2026-07-07 04:39:56 
+Desc:  Barra de herramientas flotante con acciones: relajar cables, tensar cables, reordenar nodos,  exportar e importar JSON.
+*/
+
 export interface ToolbarDeps {
 	onRelaxCables: () => void;
 	onTenseCables: () => void;

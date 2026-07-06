@@ -1,3 +1,13 @@
+/*
+█▀ █▄█ █▀▀ █░█ █▀▀ █░█
+▄█ ░█░ █▄▄ █▀█ ██▄ ▀▄▀
+
+Author: <Anton Sychev> (anton at sychev dot xyz)
+PhysicsSystem.ts (c) 2026
+Created:  2026-07-07 04:40:33 
+Desc: fisicas
+*/
+
 import { NODE_GAP, MOTION_DAMPING } from "../core/constants";
 import type { NodeView } from "../core/NodeView";
 

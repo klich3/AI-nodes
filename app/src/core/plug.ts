@@ -1,5 +1,14 @@
-import * as THREE from 'three';
-import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
+/*
+█▀ █▄█ █▀▀ █░█ █▀▀ █░█
+▄█ ░█░ █▄▄ █▀█ ██▄ ▀▄▀
+
+Author: <Anton Sychev> (anton at sychev dot xyz)
+plug.ts (c) 2026
+Created:  2026-07-07 04:39:51 
+Desc: Mesh del enchufe SVG para conectores de cables
+*/
+import * as THREE from "three";
+import { SVGLoader } from "three/addons/loaders/SVGLoader.js";
 
 // Icono de enchufe: cuerpo redondeado + dos clavijas. El borde de contacto
 // (23.196, 16.15 -donde arrancan las clavijas-) es el origen local: coincide
@@ -26,39 +35,39 @@ export const PLUG_BODY_LENGTH = (PLUG_ANCHOR.x - PLUG_BACK_X) * PLUG_SCALE;
 export const SNAP_RADIUS = 55;
 
 interface PlugGeometries {
-  fills: THREE.BufferGeometry[];
-  bodyStrokes: THREE.BufferGeometry[];
-  prongStrokes: THREE.BufferGeometry[];
+	fills: THREE.BufferGeometry[];
+	bodyStrokes: THREE.BufferGeometry[];
+	prongStrokes: THREE.BufferGeometry[];
 }
 
 function buildPlugGeometries(): PlugGeometries {
-  const data = new SVGLoader().parse(PLUG_SVG);
-  const fills: THREE.BufferGeometry[] = [];
-  const bodyStrokes: THREE.BufferGeometry[] = [];
-  const prongStrokes: THREE.BufferGeometry[] = [];
+	const data = new SVGLoader().parse(PLUG_SVG);
+	const fills: THREE.BufferGeometry[] = [];
+	const bodyStrokes: THREE.BufferGeometry[] = [];
+	const prongStrokes: THREE.BufferGeometry[] = [];
 
-  data.paths.forEach((path) => {
-    const style = (path.userData as { style: any }).style;
-    const isBody = style.fill !== undefined && style.fill !== 'none';
-    if (isBody) {
-      SVGLoader.createShapes(path).forEach((shape) => {
-        const geometry = new THREE.ShapeGeometry(shape);
-        geometry.translate(-PLUG_ANCHOR.x, -PLUG_ANCHOR.y, 0);
-        fills.push(geometry);
-      });
-    }
-    if (style.stroke !== undefined && style.stroke !== 'none') {
-      path.subPaths.forEach((subPath) => {
-        const geometry = SVGLoader.pointsToStroke(subPath.getPoints(), style);
-        if (geometry) {
-          geometry.translate(-PLUG_ANCHOR.x, -PLUG_ANCHOR.y, 0);
-          (isBody ? bodyStrokes : prongStrokes).push(geometry);
-        }
-      });
-    }
-  });
+	data.paths.forEach((path) => {
+		const style = (path.userData as { style: any }).style;
+		const isBody = style.fill !== undefined && style.fill !== "none";
+		if (isBody) {
+			SVGLoader.createShapes(path).forEach((shape) => {
+				const geometry = new THREE.ShapeGeometry(shape);
+				geometry.translate(-PLUG_ANCHOR.x, -PLUG_ANCHOR.y, 0);
+				fills.push(geometry);
+			});
+		}
+		if (style.stroke !== undefined && style.stroke !== "none") {
+			path.subPaths.forEach((subPath) => {
+				const geometry = SVGLoader.pointsToStroke(subPath.getPoints(), style);
+				if (geometry) {
+					geometry.translate(-PLUG_ANCHOR.x, -PLUG_ANCHOR.y, 0);
+					(isBody ? bodyStrokes : prongStrokes).push(geometry);
+				}
+			});
+		}
+	});
 
-  return { fills, bodyStrokes, prongStrokes };
+	return { fills, bodyStrokes, prongStrokes };
 }
 
 const PLUG_GEOMETRIES = buildPlugGeometries();
@@ -66,27 +75,27 @@ const PLUG_GEOMETRIES = buildPlugGeometries();
 export type PlugMesh = THREE.Group & { userData: { prongs: THREE.Group } };
 
 export function makePlugMesh(color: number | THREE.Color = 0xffffff): PlugMesh {
-  const g = new THREE.Group() as PlugMesh;
-  const fillColor = new THREE.Color(color);
-  const strokeColor = fillColor.clone().multiplyScalar(0.55);
-  const fillMat = new THREE.MeshBasicMaterial({ color: fillColor });
-  const strokeMat = new THREE.MeshBasicMaterial({ color: strokeColor });
+	const g = new THREE.Group() as PlugMesh;
+	const fillColor = new THREE.Color(color);
+	const strokeColor = fillColor.clone().multiplyScalar(0.55);
+	const fillMat = new THREE.MeshBasicMaterial({ color: fillColor });
+	const strokeMat = new THREE.MeshBasicMaterial({ color: strokeColor });
 
-  PLUG_GEOMETRIES.fills.forEach((geo) => g.add(new THREE.Mesh(geo, fillMat)));
-  PLUG_GEOMETRIES.bodyStrokes.forEach((geo) => {
-    const mesh = new THREE.Mesh(geo, strokeMat);
-    mesh.position.z = 0.1;
-    g.add(mesh);
-  });
+	PLUG_GEOMETRIES.fills.forEach((geo) => g.add(new THREE.Mesh(geo, fillMat)));
+	PLUG_GEOMETRIES.bodyStrokes.forEach((geo) => {
+		const mesh = new THREE.Mesh(geo, strokeMat);
+		mesh.position.z = 0.1;
+		g.add(mesh);
+	});
 
-  const prongs = new THREE.Group();
-  PLUG_GEOMETRIES.prongStrokes.forEach((geo) => {
-    const mesh = new THREE.Mesh(geo, strokeMat);
-    mesh.position.z = 0.1;
-    prongs.add(mesh);
-  });
-  g.add(prongs);
-  g.userData.prongs = prongs;
-  g.scale.set(PLUG_SCALE, -PLUG_SCALE, PLUG_SCALE);
-  return g;
+	const prongs = new THREE.Group();
+	PLUG_GEOMETRIES.prongStrokes.forEach((geo) => {
+		const mesh = new THREE.Mesh(geo, strokeMat);
+		mesh.position.z = 0.1;
+		prongs.add(mesh);
+	});
+	g.add(prongs);
+	g.userData.prongs = prongs;
+	g.scale.set(PLUG_SCALE, -PLUG_SCALE, PLUG_SCALE);
+	return g;
 }

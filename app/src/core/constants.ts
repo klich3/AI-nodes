@@ -1,3 +1,12 @@
+/*
+█▀ █▄█ █▀▀ █░█ █▀▀ █░█
+▄█ ░█░ █▄▄ █▀█ ██▄ ▀▄▀
+
+Author: <Anton Sychev> (anton at sychev dot xyz)
+constants.ts (c) 2026
+Created:  2026-07-07 04:39:48 
+Desc: Constantes globales y paleta de la tarjeta de nodo
+*/
 // El cuerpo/cabecera de los nodos vive en z=0..3; el cordón de los cables se apoya
 // por detrás (z negativa) para que pase "por debajo" de los nodos, y el enchufe se
 // queda por delante de todo, como una pieza siempre visible en el puerto. Los valores
@@ -26,6 +35,10 @@ export const CARD_PALETTE: {
 	accent: number;
 	text: string;
 	muted: string;
+	chipBg: number;
+	checkboxOff: number;
+	dropdownOff: number;
+	labelSecondary: string;
 } = {
 	bg: 0x24262b,
 	header: 0x2b2d33,
@@ -33,6 +46,10 @@ export const CARD_PALETTE: {
 	accent: 0x5b8def,
 	text: "#e7edf9",
 	muted: "#9aa0ab",
+	chipBg: 0x33353c,
+	checkboxOff: 0x33353c,
+	dropdownOff: 0x2f3138,
+	labelSecondary: "#c7c9cf",
 };
 
 export function hexToCss(hex: number): string {

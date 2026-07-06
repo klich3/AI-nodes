@@ -1,3 +1,12 @@
+/*
+█▀ █▄█ █▀▀ █░█ █▀▀ █░█
+▄█ ░█░ █▄▄ █▀█ ██▄ ▀▄▀
+
+Author: <Anton Sychev> (anton at sychev dot xyz)
+serializer.ts (c) 2026
+Created:  2026-07-07 04:39:53 
+Desc: Exportacion e importacion de grafos como JSON
+*/
 import type { Cable } from "./Cable";
 import type { NodeView } from "./NodeView";
 import type { GraphConfig, GraphNodeDef, GraphEdgeDef } from "./types";

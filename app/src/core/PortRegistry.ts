@@ -1,3 +1,12 @@
+/*
+█▀ █▄█ █▀▀ █░█ █▀▀ █░█
+▄█ ░█░ █▄▄ █▀█ ██▄ ▀▄▀
+
+Author: <Anton Sychev> (anton at sychev dot xyz)
+PortRegistry.ts (c) 2026
+Created:  2026-07-07 04:39:52 
+Desc: Registro optimizado de puertos con InstancedMesh para draw calls minimos
+*/
 import * as THREE from "three";
 
 const CAPACITY = 4096; // margen amplio: nodos añadidos en caliente desde la paleta

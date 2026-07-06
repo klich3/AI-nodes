@@ -1,3 +1,13 @@
+/*
+█▀ █▄█ █▀▀ █░█ █▀▀ █░█
+▄█ ░█░ █▄▄ █▀█ ██▄ ▀▄▀
+
+Author: <Anton Sychev> (anton at sychev dot xyz)
+LayoutSystem.ts (c) 2026
+Created:  2026-07-07 04:40:44 
+Desc: layout system
+*/
+
 import { NODE_GAP, MOTION_DAMPING } from "../core/constants";
 import type { NodeView } from "../core/NodeView";
 

@@ -1,3 +1,12 @@
+/*
+█▀ █▄█ █▀▀ █░█ █▀▀ █░█
+▄█ ░█░ █▄▄ █▀█ ██▄ ▀▄▀
+
+Author: <Anton Sychev> (anton at sychev dot xyz)
+ThemeManager.ts (c) 2026
+Created:  2026-07-07 04:39:55 
+Desc: Gestor de temas light/dark con paletas dinamicas
+*/
 // Gestor de temas light/dark. Controla los colores del renderer, el CSS del UI
 // y la paleta de las tarjetas de nodo.
 export type ThemeName = "dark" | "light";
@@ -25,6 +34,10 @@ export interface ThemeColors {
 	cardAccent: number;
 	cardText: string;
 	cardMuted: string;
+	cardChipBg: number;
+	cardCheckboxOff: number;
+	cardDropdownOff: number;
+	cardLabelSecondary: string;
 	// Grid
 	gridColor1: number;
 	gridColor2: number;
@@ -50,6 +63,10 @@ export const DARK_THEME: ThemeColors = {
 	cardAccent: 0x5b8def,
 	cardText: "#e7edf9",
 	cardMuted: "#9aa0ab",
+	cardChipBg: 0x33353c,
+	cardCheckboxOff: 0x33353c,
+	cardDropdownOff: 0x2f3138,
+	cardLabelSecondary: "#c7c9cf",
 	gridColor1: 0x2a2c31,
 	gridColor2: 0x212226,
 };
@@ -68,12 +85,16 @@ export const LIGHT_THEME: ThemeColors = {
 	cssInputBorder: "rgba(0, 0, 0, 0.12)",
 	cssJsonBg: "rgba(0, 0, 0, 0.06)",
 	cssJsonText: "#2d6a2e",
-	cardBg: 0xffffff,
+	cardBg: 0xf5f5f7,
 	cardHeader: 0xf3f4f6,
 	cardBorder: 0xd1d5db,
 	cardAccent: 0x3d7bf0,
-	cardText: "#1a1b1e",
-	cardMuted: "#6b7280",
+	cardText: "#000000",
+	cardMuted: "#000000",
+	cardChipBg: 0xe5e7eb,
+	cardCheckboxOff: 0xd1d5db,
+	cardDropdownOff: 0xe5e7eb,
+	cardLabelSecondary: "#374151",
 	gridColor1: 0xd8dae0,
 	gridColor2: 0xe5e7eb,
 };

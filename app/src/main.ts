@@ -1,3 +1,13 @@
+/*
+█▀ █▄█ █▀▀ █░█ █▀▀ █░█
+▄█ ░█░ █▄▄ █▀█ ██▄ ▀▄▀
+
+Author: <Anton Sychev> (anton at sychev dot xyz)
+main.ts (c) 2026
+Created:  2026-07-07 04:39:45 
+Desc: main file
+*/
+
 import * as THREE from "three";
 import graphConfigJson from "./config/graph.json";
 import type { GraphConfig } from "./core/types";
@@ -79,6 +89,10 @@ themeManager.onChange((_name, colors) => {
 	CARD_PALETTE.accent = colors.cardAccent;
 	CARD_PALETTE.text = colors.cardText;
 	CARD_PALETTE.muted = colors.cardMuted;
+	CARD_PALETTE.chipBg = colors.cardChipBg;
+	CARD_PALETTE.checkboxOff = colors.cardCheckboxOff;
+	CARD_PALETTE.dropdownOff = colors.cardDropdownOff;
+	CARD_PALETTE.labelSecondary = colors.cardLabelSecondary;
 	// CSS custom properties
 	document.documentElement.setAttribute("data-theme", _name);
 });
@@ -129,7 +143,70 @@ function tenseCables(): void {
 }
 
 function toggleTheme(): void {
+	// Guarda estado actual de nodos y cables antes de reconstruir
+	const nodeState = nodes.map((n) => ({
+		id: n.id,
+		typeKey: n.typeKey,
+		x: n.group.position.x,
+		y: n.group.position.y,
+		w: n.w,
+	}));
+	const cableState: Array<{
+		fromId: string;
+		fromLabel: string;
+		toId: string;
+		toLabel: string;
+	}> = [];
+	cables.forEach((c) => {
+		if (!c.endPort) return;
+		cableState.push({
+			fromId: c.startPort.userData.port.node.id,
+			fromLabel: c.startPort.userData.port.label,
+			toId: c.endPort.userData.port.node.id,
+			toLabel: c.endPort.userData.port.label,
+		});
+	});
+
+	// Cambia el tema
 	themeManager.toggle();
+
+	// Limpia nodos y cables
+	nodes.forEach((n) => n.dispose());
+	cables.forEach((c) => c.dispose());
+	nodes.length = 0;
+	cables.length = 0;
+	portRegistry.clear();
+
+	// Reconstruye nodos con la nueva paleta
+	const nodeMap = new Map<string, NodeView>();
+	nodeState.forEach((ns) => {
+		const view = instantiateNodeType(
+			scene,
+			config,
+			portRegistry,
+			ns.typeKey,
+			ns.x,
+			ns.y,
+			ns.w,
+			ns.id,
+		);
+		if (view) {
+			nodes.push(view);
+			nodeMap.set(ns.id, view);
+		}
+	});
+
+	// Reconstruye cables
+	cableState.forEach((cs) => {
+		const outPort = nodeMap.get(cs.fromId)?.getPort(cs.fromLabel, "out");
+		const inPort = nodeMap.get(cs.toId)?.getPort(cs.toLabel, "in");
+		if (outPort && inPort) {
+			cables.push(new Cable({ scene, nodes }, outPort, inPort));
+		}
+	});
+
+	input.updateReferences(nodes, cables);
+	palette.updateCount();
 }
 
 function doReorderNodes(): void {
