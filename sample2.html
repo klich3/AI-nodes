@@ -1,0 +1,981 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js Node Editor Style — Sample 2 (añadir nodos)</title>
+  <style>
+    html,body{margin:0;height:100%;overflow:hidden;background:#24262b;font-family:system-ui,sans-serif}
+    #app{position:fixed;inset:0}
+    .hud{position:fixed;left:16px;top:16px;z-index:2;color:#e7edf9;background:rgba(30,32,36,.88);padding:14px 16px;border:1px solid rgba(255,255,255,.1);border-radius:12px;max-width:440px;backdrop-filter:blur(10px)}
+    .hud p{margin:.35rem 0 0;color:#a7abb3;font-size:13px;line-height:1.45}
+    .palette{position:fixed;right:16px;top:16px;z-index:2;color:#e7edf9;background:rgba(30,32,36,.92);padding:12px;border:1px solid rgba(255,255,255,.1);border-radius:12px;width:230px;backdrop-filter:blur(10px)}
+    .palette strong{display:block;margin-bottom:8px;font-size:14px}
+    .palette-list{display:flex;flex-direction:column;gap:4px;max-height:70vh;overflow-y:auto}
+    .palette-item{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:7px 9px;color:#e7edf9;font-size:13px;text-align:left;cursor:pointer;font-family:inherit}
+    .palette-item:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2)}
+    .palette-item:active{transform:scale(0.98)}
+    .palette-item .dot{width:12px;height:12px;border-radius:50%;flex:none;box-shadow:0 0 0 2px rgba(0,0,0,.25) inset}
+    .palette-item .key{margin-left:auto;color:#8a8f98;font-size:11px}
+    .palette-count{margin-top:8px;font-size:12px;color:#8a8f98}
+    .node-editor{margin-top:10px;border-top:1px solid rgba(255,255,255,.1);padding-top:8px}
+    .node-editor summary{cursor:pointer;font-size:13px;color:#c7c9cf;user-select:none}
+    .node-editor summary:hover{color:#fff}
+    .node-editor-body{margin-top:8px;display:flex;flex-direction:column;gap:8px}
+    .node-editor-body label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:#8a8f98}
+    .node-editor-body input[type=text]{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:6px;color:#e7edf9;padding:5px 7px;font-size:12px;font-family:inherit}
+    .node-editor-body input[type=color]{width:100%;height:26px;border:none;background:none;padding:0;cursor:pointer}
+    .ne-rows{display:flex;flex-direction:column;gap:4px}
+    .ne-row{display:grid;grid-template-columns:1fr 54px 92px 18px;gap:4px;align-items:center}
+    .ne-row input,.ne-row select{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:5px;color:#e7edf9;padding:4px 5px;font-size:11px;font-family:inherit;width:100%}
+    .ne-row-remove{background:none;border:none;color:#e07070;cursor:pointer;font-size:13px;padding:0}
+    #ne-add-row{align-self:flex-start;background:none;border:1px dashed rgba(255,255,255,.25);color:#c7c9cf;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;font-family:inherit}
+    .ne-create{background:#3d7bf0;border:none;color:#fff;border-radius:6px;padding:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+    .ne-create:hover{background:#5b8def}
+    .ne-json{margin:0;background:rgba(0,0,0,.35);border-radius:6px;padding:6px 8px;font-size:10px;line-height:1.4;color:#9fd15a;max-height:120px;overflow:auto;white-space:pre-wrap;word-break:break-word}
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div class="hud">
+    <strong>Node editor style (Three.js) — Sample 2</strong>
+    <p>Igual que el editor base, más un listado de nodos a la derecha: arrastra cualquiera hasta el canvas para soltarlo donde quieras. Arrastra desde un puerto de salida y suelta en uno de entrada (mismo color) para conectar. Abajo del todo, "Crear tipo de nodo" genera un tipo nuevo (con sus inputs/outputs) y el JSON correspondiente. Arrastra el fondo vacío para desplazar el canvas; rueda del ratón para zoom.</p>
+  </div>
+  <div class="palette">
+    <strong>Añadir nodo</strong>
+    <div class="palette-list" id="palette-list"></div>
+    <div class="palette-count" id="palette-count"></div>
+    <details class="node-editor">
+      <summary>+ Crear tipo de nodo</summary>
+      <div class="node-editor-body">
+        <label>Título
+          <input type="text" id="ne-title" placeholder="Mi nodo" />
+        </label>
+        <label>Color de cabecera
+          <input type="color" id="ne-color" value="#5b8def" />
+        </label>
+        <div class="ne-rows" id="ne-rows"></div>
+        <button type="button" id="ne-add-row">+ Añadir fila (puerto)</button>
+        <button type="button" id="ne-create" class="ne-create">Crear nodo</button>
+        <pre class="ne-json" id="ne-json"></pre>
+      </div>
+    </details>
+  </div>
+  <script type="application/json" id="node-config">
+  {
+    "portTypes": {
+      "mesh":      { "color": "#8ee06a" },
+      "transform": { "color": "#d85c8a" },
+      "scalar":    { "color": "#e0545f" },
+      "normal":    { "color": "#4aa8e0" },
+      "texture":   { "color": "#e6d34a" }
+    },
+    "nodeTypes": {
+      "box": {
+        "title": "Box", "color": "#1fb6a8",
+        "rows": [
+          { "label": "Mesh", "side": "out", "type": "mesh" },
+          { "label": "MRS", "side": "out", "type": "transform" },
+          { "label": "Length", "side": "in" },
+          { "label": "Width", "side": "in" },
+          { "label": "Height", "side": "in" }
+        ]
+      },
+      "coordinate": {
+        "title": "Coordinate", "color": "#2a8fd8",
+        "rows": [
+          { "label": "Surface Normal", "side": "out", "type": "normal" }
+        ]
+      },
+      "parameterReal": {
+        "title": "Parameter", "color": "#d8484f",
+        "rows": [
+          { "label": "Real", "side": "out", "type": "scalar" }
+        ]
+      },
+      "parameterVector": {
+        "title": "Parameter", "color": "#c14f89",
+        "rows": [
+          { "label": "Vector", "side": "out", "type": "transform" }
+        ]
+      },
+      "texture": {
+        "title": "Texture", "color": "#cbbe3a",
+        "rows": [
+          { "label": "U", "side": "in" },
+          { "label": "V", "side": "in" },
+          { "label": "W", "side": "in" },
+          { "label": "Bimp", "side": "out", "type": "texture" }
+        ]
+      },
+      "transform": {
+        "title": "Transform", "color": "#d85c8a",
+        "rows": [
+          { "label": "Input", "side": "in", "type": "transform" },
+          { "label": "Scale", "side": "in", "type": "scalar" },
+          { "label": "Vector Position", "side": "in", "type": "transform" },
+          { "label": "Rotation", "side": "in", "type": "transform" },
+          { "label": "Coordinate", "side": "in", "type": "normal" },
+          { "label": "Output", "side": "out", "type": "mesh" }
+        ]
+      },
+      "outputMesh": {
+        "title": "Output mesh", "color": "#e0545f",
+        "rows": [
+          { "label": "Mesh", "side": "in", "type": "mesh" },
+          { "label": "MRS", "side": "in", "type": "transform" },
+          { "label": "Mesh", "side": "out", "type": "mesh" }
+        ]
+      },
+      "noise": {
+        "title": "Noise", "color": "#9fd15a", "withThumb": true,
+        "rows": [
+          { "label": "Noise", "side": "both", "type": "mesh" },
+          { "label": "Seed", "side": "in" },
+          { "label": "Scale", "side": "in" },
+          { "label": "Roughness", "side": "in" },
+          { "label": "Strength", "side": "in", "type": "transform" }
+        ]
+      },
+      "selection": {
+        "title": "Selection", "color": "#6fbf5c",
+        "rows": [
+          { "label": "Volume", "side": "in" },
+          { "label": "Texture Map", "side": "in", "type": "texture" },
+          { "label": "Out", "side": "out", "type": "mesh" }
+        ]
+      }
+    },
+    "graph": {
+      "nodes": [
+        { "id": "box1", "type": "box", "x": -420, "y": 160 },
+        { "id": "coord1", "type": "coordinate", "x": -690, "y": -60 },
+        { "id": "paramReal1", "type": "parameterReal", "x": -420, "y": -140 },
+        { "id": "paramVec1", "type": "parameterVector", "x": -420, "y": -340 },
+        { "id": "transform1", "type": "transform", "x": -140, "y": 60 },
+        { "id": "texture1", "type": "texture", "x": -140, "y": -320 },
+        { "id": "output1", "type": "outputMesh", "x": 150, "y": 160 },
+        { "id": "selection1", "type": "selection", "x": 430, "y": -60 },
+        { "id": "noise1", "type": "noise", "x": 430, "y": 220 }
+      ],
+      "edges": [
+        { "from": ["box1", "Mesh"], "to": ["output1", "Mesh"] },
+        { "from": ["box1", "MRS"], "to": ["transform1", "Input"] },
+        { "from": ["paramReal1", "Real"], "to": ["transform1", "Scale"] },
+        { "from": ["paramVec1", "Vector"], "to": ["transform1", "Vector Position"] },
+        { "from": ["coord1", "Surface Normal"], "to": ["transform1", "Coordinate"] },
+        { "from": ["transform1", "Output"], "to": ["output1", "MRS"] },
+        { "from": ["output1", "Mesh"], "to": ["noise1", "Noise"] },
+        { "from": ["texture1", "Bimp"], "to": ["selection1", "Texture Map"] },
+        { "from": ["selection1", "Out"], "to": ["noise1", "Strength"] }
+      ]
+    }
+  }
+  </script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
+
+    const config = JSON.parse(document.getElementById('node-config').textContent);
+
+    const app = document.getElementById('app');
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.OrthographicCamera(
+      -window.innerWidth / 2, window.innerWidth / 2,
+      window.innerHeight / 2, -window.innerHeight / 2,
+      0.1, 3000
+    );
+    camera.position.z = 1000;
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setClearColor(0x24262b, 1);
+    app.appendChild(renderer.domElement);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 2.6));
+    const l1 = new THREE.PointLight(0xffffff, 1.0, 3000); l1.position.set(-200, 200, 600); scene.add(l1);
+
+    const grid = new THREE.GridHelper(3000, 60, 0x3a3d44, 0x2c2e33);
+    grid.rotation.x = Math.PI / 2;
+    grid.position.z = -60;
+    scene.add(grid);
+
+    function roundedRectShape(w, h, r) {
+      const x = -w / 2, y = -h / 2;
+      const s = new THREE.Shape();
+      s.moveTo(x + r, y);
+      s.lineTo(x + w - r, y);
+      s.quadraticCurveTo(x + w, y, x + w, y + r);
+      s.lineTo(x + w, y + h - r);
+      s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      s.lineTo(x + r, y + h);
+      s.quadraticCurveTo(x, y + h, x, y + h - r);
+      s.lineTo(x, y + r);
+      s.quadraticCurveTo(x, y, x + r, y);
+      return s;
+    }
+
+    function labelSprite(text, opts = {}) {
+      const { size = 30, weight = 700, color = '#e9e9ec' } = opts;
+      const canvas = document.createElement('canvas');
+      canvas.width = 512; canvas.height = 96;
+      const ctx = canvas.getContext('2d');
+      ctx.font = `${weight} ${size}px system-ui, Arial`;
+      ctx.fillStyle = color;
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, 8, 48);
+      const tex = new THREE.CanvasTexture(canvas);
+      const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+      const sprite = new THREE.Sprite(mat);
+      sprite.scale.set(210, 40, 1);
+      sprite.center.set(0, 0.5);
+      return sprite;
+    }
+
+    function previewThumb(hue = 0.55) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 64; canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+      const grad = ctx.createLinearGradient(0, 0, 64, 64);
+      grad.addColorStop(0, `hsl(${hue * 360}, 70%, 55%)`);
+      grad.addColorStop(1, `hsl(${(hue * 360 + 60) % 360}, 70%, 25%)`);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 64, 64);
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(1.5, 1.5, 61, 61);
+      const tex = new THREE.CanvasTexture(canvas);
+      const mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(34, 34),
+        new THREE.MeshBasicMaterial({ map: tex, transparent: true })
+      );
+      return mesh;
+    }
+
+    // Icono de enchufe: cuerpo redondeado + dos clavijas. El borde de contacto
+    // (23.196, 16.15 -donde arrancan las clavijas-) es el origen local: coincide
+    // justo con el puerto. Las clavijas solo se muestran mientras el cable está
+    // suelto/arrastrando; en cuanto queda enchufado se ocultan (quedan "dentro").
+    const PLUG_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 35 33">
+      <path d="M23.196,11.1838 H31.4802" fill="none" stroke="#970000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M31.4802,21.1249 H23.196" fill="none" stroke="#970000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M11.0533,25.2671 L23.196,25.2671 V7.04165 L11.0533,7.04165 C9.81063,7.04178 8.61885,7.5355 7.74013,8.41423 C6.8614,9.29296 6.36767,10.4847 6.36754,11.7274 L6.36754,20.5813 C6.36767,21.824 6.8614,23.0157 7.74012,23.8945 C8.61885,24.7732 9.81062,25.2669 11.0533,25.2671 Z" fill="#ff0000" stroke="#970000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+    const PLUG_ANCHOR = { x: 23.196, y: 16.15435 };
+    const PLUG_BACK_X = 6.36754;
+    const PLUG_SCALE = 0.9;
+    // El cuerpo ya queda horizontal (borde de contacto a la derecha), enchufado no
+    // hace falta ningún giro adicional: el ángulo de "entrada" es 0.
+    const PLUG_INTO_ANGLE = 0;
+    // Distancia (en unidades de mundo) entre el borde de contacto y el extremo trasero
+    // del cuerpo: la cuerda se para ahí, no en el borde, para "engancharse" al culo del enchufe.
+    const PLUG_BODY_LENGTH = (PLUG_ANCHOR.x - PLUG_BACK_X) * PLUG_SCALE;
+    const SNAP_RADIUS = 55;
+
+    function buildPlugGeometries() {
+      const data = new SVGLoader().parse(PLUG_SVG);
+      const fills = [];
+      const bodyStrokes = [];
+      const prongStrokes = [];
+      data.paths.forEach((path) => {
+        const style = path.userData.style;
+        const isBody = style.fill !== undefined && style.fill !== 'none';
+        if (isBody) {
+          SVGLoader.createShapes(path).forEach((shape) => {
+            const geometry = new THREE.ShapeGeometry(shape);
+            geometry.translate(-PLUG_ANCHOR.x, -PLUG_ANCHOR.y, 0);
+            fills.push(geometry);
+          });
+        }
+        if (style.stroke !== undefined && style.stroke !== 'none') {
+          path.subPaths.forEach((subPath) => {
+            const geometry = SVGLoader.pointsToStroke(subPath.getPoints(), style);
+            if (geometry) {
+              geometry.translate(-PLUG_ANCHOR.x, -PLUG_ANCHOR.y, 0);
+              (isBody ? bodyStrokes : prongStrokes).push(geometry);
+            }
+          });
+        }
+      });
+      return { fills, bodyStrokes, prongStrokes };
+    }
+
+    const PLUG_GEOMETRIES = buildPlugGeometries();
+
+    function makePlugMesh(color = 0xffffff) {
+      const g = new THREE.Group();
+      const fillColor = new THREE.Color(color);
+      const strokeColor = fillColor.clone().multiplyScalar(0.55);
+      const fillMat = new THREE.MeshBasicMaterial({ color: fillColor });
+      const strokeMat = new THREE.MeshBasicMaterial({ color: strokeColor });
+      PLUG_GEOMETRIES.fills.forEach((geo) => g.add(new THREE.Mesh(geo, fillMat)));
+      PLUG_GEOMETRIES.bodyStrokes.forEach((geo) => {
+        const mesh = new THREE.Mesh(geo, strokeMat);
+        mesh.position.z = 0.1;
+        g.add(mesh);
+      });
+      const prongs = new THREE.Group();
+      PLUG_GEOMETRIES.prongStrokes.forEach((geo) => {
+        const mesh = new THREE.Mesh(geo, strokeMat);
+        mesh.position.z = 0.1;
+        prongs.add(mesh);
+      });
+      g.add(prongs);
+      g.userData.prongs = prongs;
+      g.scale.set(PLUG_SCALE, -PLUG_SCALE, PLUG_SCALE);
+      return g;
+    }
+
+    function hexToInt(hex) {
+      return parseInt(hex.replace('#', ''), 16);
+    }
+
+    const DEFAULT_PORT_COLOR = { in: 0xe0545f, out: 0x8ee06a };
+
+    function resolvePortColor(type, kind) {
+      const entry = type && config.portTypes[type];
+      return entry ? hexToInt(entry.color) : DEFAULT_PORT_COLOR[kind];
+    }
+
+    class NodeView {
+      constructor({ x, y, w = 200, title, color, rows = [], withThumb = false }) {
+        const rowH = 30;
+        const headerH = 34;
+        const h = headerH + rows.length * rowH + 20;
+
+        this.group = new THREE.Group();
+        this.group.position.set(x, y, 0);
+        scene.add(this.group);
+
+        this.w = w;
+        this.h = h;
+        this.vx = 0;
+        this.vy = 0;
+
+        const bodyShape = roundedRectShape(w, h, 10);
+        const body = new THREE.Mesh(
+          new THREE.ShapeGeometry(bodyShape, 24),
+          new THREE.MeshBasicMaterial({ color: 0x2c2e33 })
+        );
+        this.group.add(body);
+
+        const header = new THREE.Mesh(
+          new THREE.ShapeGeometry(roundedRectShape(w, headerH, 10), 24),
+          new THREE.MeshBasicMaterial({ color })
+        );
+        header.position.set(0, h / 2 - headerH / 2, 1);
+        this.group.add(header);
+
+        const titleSprite = labelSprite(title, { size: 54, weight: 800, color: '#14161a' });
+        titleSprite.scale.set(195, 34, 1);
+        titleSprite.position.set(-w / 2 + 14, h / 2 - headerH / 2, 2);
+        this.group.add(titleSprite);
+
+        if (withThumb) {
+          const thumb = previewThumb(Math.random());
+          thumb.position.set(w / 2 - 24, h / 2 - headerH / 2, 2);
+          this.group.add(thumb);
+        }
+
+        let cursorY = h / 2 - headerH - 20;
+        this.inPorts = [];
+        this.outPorts = [];
+
+        rows.forEach((row) => {
+          if (row.label) {
+            const sp = labelSprite(row.label, { size: 46, weight: 500, color: '#c7c9cf' });
+            sp.scale.set(170, 26, 1);
+            sp.position.set(-w / 2 + 26, cursorY, 2);
+            this.group.add(sp);
+          }
+          if (row.side === 'in' || row.side === 'both') {
+            const p = this.makePort(-w / 2, cursorY, resolvePortColor(row.type, 'in'), 'in', row.label || '');
+            this.inPorts.push(p);
+          }
+          if (row.side === 'out' || row.side === 'both') {
+            const p = this.makePort(w / 2, cursorY, resolvePortColor(row.type, 'out'), 'out', row.label || '');
+            this.outPorts.push(p);
+          }
+          cursorY -= rowH;
+        });
+
+        this.mainOut = this.outPorts[0] || null;
+        this.mainIn = this.inPorts[0] || null;
+      }
+
+      makePort(x, y, color, kind, label) {
+        const g = new THREE.Group();
+        g.position.set(x, y, 3);
+        g.userData.port = { node: this, kind, label, color };
+        const c1 = new THREE.Mesh(new THREE.CircleGeometry(6, 24), new THREE.MeshBasicMaterial({ color }));
+        const c2 = new THREE.Mesh(new THREE.CircleGeometry(9, 24), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.25 }));
+        g.add(c2, c1);
+        this.group.add(g);
+        return g;
+      }
+
+      getPort(label, kind) {
+        const list = kind === 'out' ? this.outPorts : this.inPorts;
+        return list.find(p => p.userData.port.label === label) || null;
+      }
+    }
+
+    // El cuerpo/cabecera de los nodos vive en z=0..3; el cordón de los cables se apoya
+    // por detrás (z negativa) para que pase "por debajo" de los nodos, y el enchufe
+    // se queda por delante de todo, como una pieza siempre visible en el puerto.
+    const NODE_Z = 0, NODE_Z_LIFTED = 60;
+    const CABLE_Z = -2, CABLE_Z_LIFTED = 64;
+    const PLUG_Z = 7, PLUG_Z_LIFTED = 65;
+    const NODE_GAP = 26;
+
+    class Cable {
+      constructor(startPort, endPort = null) {
+        this.startPort = startPort;
+        this.endPort = endPort;
+        this.liveTarget = null;
+        this.snapPort = null;
+        this.points = Array.from({ length: 20 }, () => new THREE.Vector3());
+        this.prev = Array.from({ length: 20 }, () => new THREE.Vector3());
+        this.rest = new Array(19).fill(1);
+
+        this.color = startPort.userData.port.color ?? 0xf0c24a;
+
+        this.geo = new THREE.BufferGeometry();
+        this.line = new THREE.Line(this.geo, new THREE.LineBasicMaterial({ color: this.color, transparent: true, opacity: 0.95 }));
+        this.line.position.z = CABLE_Z;
+        scene.add(this.line);
+
+        this.plug = makePlugMesh(this.color);
+        this.plug.position.z = PLUG_Z;
+        scene.add(this.plug);
+
+        this.seed();
+      }
+
+      // Puerto de entrada del color de este cable más cercano al cursor, dentro del
+      // radio de imán (busca en todos los nodos, por eso todo viene del JSON: nada
+      // hardcodeado a un puerto concreto).
+      findSnapTarget() {
+        if (!this.liveTarget) return null;
+        let best = null, bestDist = SNAP_RADIUS;
+        nodes.forEach((node) => {
+          node.inPorts.forEach((port) => {
+            if (port.userData.port.color !== this.color) return;
+            const wp = port.getWorldPosition(new THREE.Vector3());
+            const d = wp.distanceTo(this.liveTarget);
+            if (d < bestDist) { bestDist = d; best = port; }
+          });
+        });
+        return best;
+      }
+
+      // Punto real del puerto (contacto): donde debe quedar el borde del enchufe.
+      contactPos() {
+        if (this.endPort) return this.endPort.getWorldPosition(new THREE.Vector3());
+        return this.liveTarget ? this.liveTarget.clone() : null;
+      }
+
+      seed() {
+        const a = this.startPort.getWorldPosition(new THREE.Vector3());
+        const b = this.contactPos() || a.clone().add(new THREE.Vector3(120, -20, 0));
+        const ropeEnd = this.endPort ? b.clone().add(new THREE.Vector3(-PLUG_BODY_LENGTH, 0, 0)) : b;
+        const n = this.points.length;
+        for (let i = 0; i < n; i++) {
+          const t = i / (n - 1);
+          const p = new THREE.Vector3().lerpVectors(a, ropeEnd, t);
+          p.y -= Math.sin(t * Math.PI) * 30;
+          this.points[i].copy(p);
+          this.prev[i].copy(p);
+          if (i > 0) this.rest[i - 1] = a.distanceTo(ropeEnd) / (n - 1);
+        }
+      }
+
+      setLive(v) { this.liveTarget = v; }
+      attach(port) { this.endPort = port; this.snapPort = null; }
+
+      update() {
+        const a = this.startPort.getWorldPosition(new THREE.Vector3());
+
+        // Enchufado: el borde de contacto queda fijo en el puerto; la cuerda se
+        // engancha un poco antes, en el culo del enchufe.
+        // Arrastrando: si hay un puerto compatible cerca (imán), la cuerda se estira
+        // hacia su posición de enchufado en vez de seguir el cursor a pelo.
+        let contact, ropeEnd, snapPull = 0;
+        if (this.endPort) {
+          contact = this.contactPos();
+          ropeEnd = contact.clone().add(new THREE.Vector3(-PLUG_BODY_LENGTH, 0, 0));
+        } else {
+          contact = this.contactPos();
+          if (!contact) return;
+          this.snapPort = this.findSnapTarget();
+          ropeEnd = contact;
+          if (this.snapPort) {
+            const portPos = this.snapPort.getWorldPosition(new THREE.Vector3());
+            const dist = portPos.distanceTo(contact);
+            snapPull = Math.pow(THREE.MathUtils.clamp(1 - dist / SNAP_RADIUS, 0, 1), 2);
+            ropeEnd = contact.clone().lerp(portPos, snapPull);
+          }
+        }
+
+        const n = this.points.length;
+        this.points[0].copy(a);
+        this.points[n - 1].copy(ropeEnd);
+
+        for (let i = 1; i < n - 1; i++) {
+          const c = this.points[i], p = this.prev[i];
+          const vel = c.clone().sub(p).multiplyScalar(0.92);
+          p.copy(c);
+          c.add(vel).add(new THREE.Vector3(0, -0.55, 0));
+        }
+
+        for (let iter = 0; iter < 6; iter++) {
+          this.points[0].copy(a);
+          this.points[n - 1].copy(ropeEnd);
+          for (let i = 0; i < n - 1; i++) {
+            const p1 = this.points[i], p2 = this.points[i + 1];
+            const d = p1.distanceTo(p2) || 1e-6;
+            const diff = (d - this.rest[i]) / d;
+            const off = p2.clone().sub(p1).multiplyScalar(0.5 * diff);
+            if (i !== 0) p1.add(off);
+            if (i + 1 !== n - 1) p2.sub(off);
+          }
+        }
+
+        const curve = new THREE.CatmullRomCurve3(this.points, false, 'catmullrom', 0.5);
+        const pts = curve.getPoints(50);
+        this.geo.setFromPoints(pts);
+
+        // Las clavijas solo se ven mientras el enchufe está suelto (colgando o
+        // arrastrando); en cuanto queda plantado en un puerto, se ocultan.
+        this.plug.userData.prongs.visible = !this.endPort;
+
+        if (this.endPort) {
+          // Ya enchufado: pose fija alineada al puerto (no sigue el temblor de la cuerda).
+          this.plug.position.set(contact.x, contact.y, this.plug.position.z);
+          this.plug.rotation.z = -PLUG_INTO_ANGLE;
+        } else if (snapPull > 0.001) {
+          // Iman tirando: interpola posición y giro hacia la pose "enchufada" del candidato.
+          const portPos = this.snapPort.getWorldPosition(new THREE.Vector3());
+          const free = pts[pts.length - 1];
+          const prevPt = pts[pts.length - 2] || free.clone().add(new THREE.Vector3(-1, 0, 0));
+          const dir = free.clone().sub(prevPt).normalize();
+          const freeAngle = Math.atan2(dir.y, dir.x) - PLUG_INTO_ANGLE;
+          this.plug.position.set(free.x, free.y, this.plug.position.z).lerp(
+            new THREE.Vector3(portPos.x, portPos.y, this.plug.position.z), snapPull
+          );
+          this.plug.rotation.z = freeAngle + (-PLUG_INTO_ANGLE - freeAngle) * snapPull;
+        } else {
+          // Arrastrando libre: el enchufe sigue la punta libre del cable.
+          const end = pts[pts.length - 1];
+          const prev = pts[pts.length - 2] || end.clone().add(new THREE.Vector3(-1, 0, 0));
+          const dir = end.clone().sub(prev).normalize();
+          this.plug.position.set(end.x, end.y, this.plug.position.z);
+          this.plug.rotation.z = Math.atan2(dir.y, dir.x) - PLUG_INTO_ANGLE;
+        }
+      }
+
+      dispose() {
+        scene.remove(this.line);
+        scene.remove(this.plug);
+        this.geo.dispose();
+        this.line.material.dispose();
+      }
+    }
+
+    // Instancia un NodeView a partir de un tipo del catálogo (config.nodeTypes).
+    // La usan tanto la carga inicial del grafo (buildGraph) como el listado lateral
+    // para añadir nodos nuevos en caliente: un único punto de verdad para "qué es un nodo".
+    function instantiateNodeType(typeKey, x, y, w) {
+      const def = config.nodeTypes[typeKey];
+      if (!def) { console.warn(`Tipo de nodo desconocido: ${typeKey}`); return null; }
+      return new NodeView({
+        x, y, w: w || 210,
+        title: def.title, color: hexToInt(def.color),
+        rows: def.rows, withThumb: !!def.withThumb
+      });
+    }
+
+    function buildGraph(cfg) {
+      const nodeMap = new Map();
+
+      cfg.graph.nodes.forEach((n) => {
+        const view = instantiateNodeType(n.type, n.x, n.y, n.w);
+        if (view) nodeMap.set(n.id, view);
+      });
+
+      const cables = [];
+      cfg.graph.edges.forEach((edge) => {
+        const [fromId, fromLabel] = edge.from;
+        const [toId, toLabel] = edge.to;
+        const outPort = nodeMap.get(fromId)?.getPort(fromLabel, 'out');
+        const inPort = nodeMap.get(toId)?.getPort(toLabel, 'in');
+        if (outPort && inPort) cables.push(new Cable(outPort, inPort));
+        else console.warn('Edge no resuelta:', edge);
+      });
+
+      return { nodes: Array.from(nodeMap.values()), cables };
+    }
+
+    const { nodes, cables } = buildGraph(config);
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+    const hitPt = new THREE.Vector3();
+    let dragNode = null;
+    let dragOffset = new THREE.Vector3();
+    let liveCable = null;
+    let panning = false;
+    const panStart = { x: 0, y: 0 };
+    const camStart = new THREE.Vector3();
+
+    renderer.domElement.style.cursor = 'grab';
+
+    function cableTouchesNode(cable, node) {
+      return cable.startPort.userData.port.node === node ||
+        (cable.endPort && cable.endPort.userData.port.node === node);
+    }
+
+    function setNodeElevated(node, on) {
+      node.group.position.z = on ? NODE_Z_LIFTED : NODE_Z;
+      cables.forEach((c) => {
+        if (!cableTouchesNode(c, node)) return;
+        c.line.position.z = on ? CABLE_Z_LIFTED : CABLE_Z;
+        c.plug.position.z = on ? PLUG_Z_LIFTED : PLUG_Z;
+      });
+    }
+
+    function detachCable(cable) {
+      const idx = cables.indexOf(cable);
+      if (idx !== -1) {
+        cable.dispose();
+        cables.splice(idx, 1);
+      }
+    }
+
+    const MOTION_DAMPING = 0.86;
+
+    // Resuelve solapes sobre una copia de posiciones (varias pasadas relajando pares,
+    // igual que el solver del cable) hasta dejar el hueco NODE_GAP entre cajas.
+    // `moved` actúa como ancla y no se desplaza en el cálculo: solo se llama al SOLTAR
+    // un nodo o al añadir uno nuevo (no mientras arrastras/pasas por encima), así que
+    // los vecinos ceden un hueco justo en ese momento, no según te acercas.
+    function resolvePositions(moved) {
+      const pos = new Map(nodes.map((n) => [n, { x: n.group.position.x, y: n.group.position.y }]));
+      for (let iter = 0; iter < 4; iter++) {
+        for (let i = 0; i < nodes.length; i++) {
+          for (let j = i + 1; j < nodes.length; j++) {
+            const a = nodes[i], b = nodes[j];
+            const pa = pos.get(a), pb = pos.get(b);
+            const dx = pb.x - pa.x, dy = pb.y - pa.y;
+            const minX = (a.w + b.w) / 2 + NODE_GAP;
+            const minY = (a.h + b.h) / 2 + NODE_GAP;
+            const overlapX = minX - Math.abs(dx);
+            const overlapY = minY - Math.abs(dy);
+            if (overlapX <= 0 || overlapY <= 0) continue;
+            if (overlapX < overlapY) {
+              const push = overlapX * Math.sign(dx || 1);
+              if (a === moved) pb.x += push;
+              else if (b === moved) pa.x -= push;
+              else { pa.x -= push / 2; pb.x += push / 2; }
+            } else {
+              const push = overlapY * Math.sign(dy || 1);
+              if (a === moved) pb.y += push;
+              else if (b === moved) pa.y -= push;
+              else { pa.y -= push / 2; pb.y += push / 2; }
+            }
+          }
+        }
+      }
+      return pos;
+    }
+
+    // Convierte el desplazamiento resuelto en un impulso de velocidad amortiguado:
+    // con decaimiento geométrico (1 - MOTION_DAMPING), la integración en animate()
+    // recorre aprox. esa misma distancia total, pero deslizándose como una gota de agua
+    // en vez de saltar de golpe a la posición final.
+    function settleOverlaps(moved) {
+      const resolved = resolvePositions(moved);
+      nodes.forEach((n) => {
+        if (n === moved) return;
+        const target = resolved.get(n);
+        n.vx += (target.x - n.group.position.x) * (1 - MOTION_DAMPING);
+        n.vy += (target.y - n.group.position.y) * (1 - MOTION_DAMPING);
+      });
+    }
+
+    function integrateNodeMotion() {
+      nodes.forEach((n) => {
+        if (Math.abs(n.vx) < 0.01 && Math.abs(n.vy) < 0.01) {
+          n.vx = 0; n.vy = 0;
+          return;
+        }
+        n.group.position.x += n.vx;
+        n.group.position.y += n.vy;
+        n.vx *= MOTION_DAMPING;
+        n.vy *= MOTION_DAMPING;
+      });
+    }
+
+    function screenToWorld(x, y) {
+      pointer.x = (x / window.innerWidth) * 2 - 1;
+      pointer.y = -(y / window.innerHeight) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      raycaster.ray.intersectPlane(plane, hitPt);
+      return hitPt.clone();
+    }
+
+    function hitTest(x, y) {
+      pointer.x = (x / window.innerWidth) * 2 - 1;
+      pointer.y = -(y / window.innerHeight) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      return raycaster.intersectObjects(nodes.map(n => n.group), true);
+    }
+
+    renderer.domElement.addEventListener('pointerdown', (e) => {
+      const h = hitTest(e.clientX, e.clientY)[0]?.object;
+      if (!h) {
+        panning = true;
+        panStart.x = e.clientX;
+        panStart.y = e.clientY;
+        camStart.copy(camera.position);
+        renderer.domElement.style.cursor = 'grabbing';
+        return;
+      }
+      let cur = h;
+      while (cur && !cur.userData.port && !nodes.find(n => n.group === cur)) cur = cur.parent;
+      const port = cur?.userData?.port;
+
+      if (port?.kind === 'out') {
+        liveCable = new Cable(cur, null);
+        liveCable.setLive(screenToWorld(e.clientX, e.clientY));
+        cables.push(liveCable);
+        return;
+      }
+
+      if (port?.kind === 'in') {
+        // Desenchufar: si ese puerto ya tiene un cable puesto, lo "sacamos" y seguimos
+        // arrastrando el mismo cable (misma cuerda/enchufe) hasta soltarlo en otro sitio.
+        const occupant = cables.find((c) => c.endPort === cur);
+        if (occupant) {
+          occupant.endPort = null;
+          occupant.setLive(screenToWorld(e.clientX, e.clientY));
+          liveCable = occupant;
+        }
+        return;
+      }
+
+      const node = nodes.find(n => n.group === cur);
+      if (node) {
+        dragNode = node;
+        dragNode.vx = 0;
+        dragNode.vy = 0;
+        dragOffset.copy(node.group.position).sub(screenToWorld(e.clientX, e.clientY));
+        setNodeElevated(node, true);
+      }
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (panning) {
+        const worldPerPixelX = (camera.right - camera.left) / window.innerWidth / camera.zoom;
+        const worldPerPixelY = (camera.top - camera.bottom) / window.innerHeight / camera.zoom;
+        camera.position.x = camStart.x - (e.clientX - panStart.x) * worldPerPixelX;
+        camera.position.y = camStart.y + (e.clientY - panStart.y) * worldPerPixelY;
+        return;
+      }
+      const p = screenToWorld(e.clientX, e.clientY);
+      if (dragNode) {
+        dragNode.group.position.x = p.x + dragOffset.x;
+        dragNode.group.position.y = p.y + dragOffset.y;
+      }
+      if (liveCable) liveCable.setLive(p);
+    });
+
+    window.addEventListener('pointerup', (e) => {
+      if (panning) {
+        panning = false;
+        renderer.domElement.style.cursor = 'grab';
+      }
+      if (liveCable) {
+        // El imán ya solo propone puertos de entrada del mismo color dentro de su radio,
+        // así que soltar simplemente confirma (o no) ese candidato.
+        const target = liveCable.snapPort;
+        if (target) {
+          const occupant = cables.find((c) => c !== liveCable && c.endPort === target);
+          if (occupant) detachCable(occupant);
+          liveCable.attach(target);
+        } else {
+          detachCable(liveCable);
+        }
+      }
+      liveCable = null;
+      if (dragNode) {
+        setNodeElevated(dragNode, false);
+        settleOverlaps(dragNode);
+        dragNode = null;
+      }
+    });
+
+    renderer.domElement.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const zoomSpeed = 0.0015;
+      camera.zoom = THREE.MathUtils.clamp(camera.zoom * (1 - e.deltaY * zoomSpeed), 0.4, 2.5);
+      camera.updateProjectionMatrix();
+    }, { passive: false });
+
+    window.addEventListener('resize', () => {
+      camera.left = -window.innerWidth / 2;
+      camera.right = window.innerWidth / 2;
+      camera.top = window.innerHeight / 2;
+      camera.bottom = -window.innerHeight / 2;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // --- Listado de nodos existentes: arrastra un item hasta el canvas para soltarlo ahí ---
+    function updatePaletteCount() {
+      document.getElementById('palette-count').textContent = `${nodes.length} nodo${nodes.length === 1 ? '' : 's'} en el canvas`;
+    }
+
+    // Nace justo bajo el cursor y se entrega al mismo mecanismo de arrastre de nodos
+    // (dragNode/dragOffset) que ya usan los nodos existentes: soltar en cualquier punto
+    // deja el nodo ahí, y settleOverlaps() del pointerup normal le abre hueco si hace falta.
+    function beginDragFromPalette(typeKey, e) {
+      const p = screenToWorld(e.clientX, e.clientY);
+      const view = instantiateNodeType(typeKey, p.x, p.y);
+      if (!view) return;
+      nodes.push(view);
+      updatePaletteCount();
+      dragNode = view;
+      dragNode.vx = 0;
+      dragNode.vy = 0;
+      dragOffset.set(0, 0, 0);
+      setNodeElevated(view, true);
+    }
+
+    const paletteList = document.getElementById('palette-list');
+    function addPaletteItem(key, def) {
+      const item = document.createElement('button');
+      item.className = 'palette-item';
+      item.innerHTML = `<span class="dot" style="background:${def.color}"></span>${def.title}<span class="key">${key}</span>`;
+      item.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        beginDragFromPalette(key, e);
+      });
+      paletteList.appendChild(item);
+    }
+    Object.entries(config.nodeTypes).forEach(([key, def]) => addPaletteItem(key, def));
+    updatePaletteCount();
+
+    // --- Editor de tipo de nodo: decides sus filas (input/output/both + tipo de dato)
+    // y se genera el JSON de ese tipo (el mismo formato que config.nodeTypes.*), que se
+    // añade en caliente al catálogo y al listado de arriba. ---
+    const neRows = document.getElementById('ne-rows');
+    const neJson = document.getElementById('ne-json');
+
+    function addNodeTypeEditorRow(initial = {}) {
+      const row = document.createElement('div');
+      row.className = 'ne-row';
+
+      const labelInput = document.createElement('input');
+      labelInput.type = 'text';
+      labelInput.className = 'ne-row-label';
+      labelInput.placeholder = 'Nombre del puerto';
+      labelInput.value = initial.label || '';
+
+      const sideSelect = document.createElement('select');
+      sideSelect.className = 'ne-row-side';
+      ['in', 'out', 'both'].forEach((s) => {
+        const o = document.createElement('option');
+        o.value = s; o.textContent = s;
+        sideSelect.appendChild(o);
+      });
+      sideSelect.value = initial.side || 'in';
+
+      const typeSelect = document.createElement('select');
+      typeSelect.className = 'ne-row-type';
+      const noneOpt = document.createElement('option');
+      noneOpt.value = ''; noneOpt.textContent = '(color por defecto)';
+      typeSelect.appendChild(noneOpt);
+      Object.keys(config.portTypes).forEach((t) => {
+        const o = document.createElement('option');
+        o.value = t; o.textContent = t;
+        typeSelect.appendChild(o);
+      });
+      typeSelect.value = initial.type || '';
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'ne-row-remove';
+      removeBtn.textContent = '✕';
+      removeBtn.addEventListener('click', () => { row.remove(); updateJsonPreview(); });
+
+      [labelInput, sideSelect, typeSelect].forEach((el) => el.addEventListener('input', updateJsonPreview));
+      row.append(labelInput, sideSelect, typeSelect, removeBtn);
+      neRows.appendChild(row);
+      updateJsonPreview();
+    }
+
+    function readNodeTypeForm() {
+      const title = document.getElementById('ne-title').value.trim() || 'Nodo';
+      const color = document.getElementById('ne-color').value;
+      const rows = Array.from(neRows.querySelectorAll('.ne-row')).map((row) => {
+        const label = row.querySelector('.ne-row-label').value.trim();
+        const side = row.querySelector('.ne-row-side').value;
+        const type = row.querySelector('.ne-row-type').value;
+        const def = { label, side };
+        if (type) def.type = type;
+        return def;
+      }).filter((r) => r.label);
+      return { title, color, rows };
+    }
+
+    function updateJsonPreview() {
+      neJson.textContent = JSON.stringify(readNodeTypeForm(), null, 2);
+    }
+
+    // Genera un identificador único (clave de config.nodeTypes) a partir del título,
+    // en minúsculas y camelCase, evitando choques con tipos ya existentes.
+    function slugifyTypeKey(title) {
+      const words = title.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+      const base = words.map((w, i) => (i === 0 ? w : w[0].toUpperCase() + w.slice(1))).join('') || 'nodo';
+      let key = base, n = 2;
+      while (config.nodeTypes[key]) key = base + n++;
+      return key;
+    }
+
+    document.getElementById('ne-add-row').addEventListener('click', () => addNodeTypeEditorRow());
+    document.getElementById('ne-create').addEventListener('click', () => {
+      const def = readNodeTypeForm();
+      if (!def.rows.length) { alert('Añade al menos una fila con nombre de puerto.'); return; }
+      const key = slugifyTypeKey(def.title);
+      config.nodeTypes[key] = def;
+      addPaletteItem(key, def);
+      document.getElementById('ne-title').value = '';
+      neRows.innerHTML = '';
+      addNodeTypeEditorRow();
+    });
+
+    addNodeTypeEditorRow();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      integrateNodeMotion();
+      cables.forEach(c => c.update());
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>

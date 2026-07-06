@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Node Editor (Vite + TypeScript)</title>
+</head>
+<body>
+  <div id="app"></div>
+  <div class="hud">
+    <strong>Node editor (Vite + TypeScript)</strong>
+    <p>Misma lógica que sample2.html, reorganizada en módulos TS. Arrastra un item del listado hasta el canvas para soltarlo donde quieras. Arrastra desde un puerto de salida y suelta en uno de entrada (mismo color) para conectar. "Crear tipo de nodo" genera un tipo nuevo (con sus inputs/outputs) y el JSON correspondiente. Arrastra el fondo para desplazar el canvas; rueda del ratón para zoom.</p>
+  </div>
+  <div class="palette">
+    <strong>Añadir nodo</strong>
+    <div class="palette-list" id="palette-list"></div>
+    <div class="palette-count" id="palette-count"></div>
+    <details class="node-editor" id="node-type-editor">
+      <summary>+ Crear tipo de nodo</summary>
+      <div class="node-editor-body">
+        <label>Título
+          <input type="text" id="ne-title" placeholder="Mi nodo" />
+        </label>
+        <label>Color de cabecera
+          <input type="color" id="ne-color" value="#5b8def" />
+        </label>
+        <div class="ne-rows" id="ne-rows"></div>
+        <button type="button" id="ne-add-row">+ Añadir fila (puerto)</button>
+        <button type="button" id="ne-create" class="ne-create">Crear nodo</button>
+        <pre class="ne-json" id="ne-json"></pre>
+      </div>
+    </details>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

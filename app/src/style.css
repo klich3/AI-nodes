@@ -1,0 +1,31 @@
+html, body { margin: 0; height: 100%; overflow: hidden; background: #24262b; font-family: system-ui, sans-serif; }
+#app { position: fixed; inset: 0; }
+
+.hud { position: fixed; left: 16px; top: 16px; z-index: 2; color: #e7edf9; background: rgba(30,32,36,.88); padding: 14px 16px; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; max-width: 440px; backdrop-filter: blur(10px); }
+.hud p { margin: .35rem 0 0; color: #a7abb3; font-size: 13px; line-height: 1.45; }
+
+.palette { position: fixed; right: 16px; top: 16px; z-index: 2; color: #e7edf9; background: rgba(30,32,36,.92); padding: 12px; border: 1px solid rgba(255,255,255,.1); border-radius: 12px; width: 230px; backdrop-filter: blur(10px); }
+.palette strong { display: block; margin-bottom: 8px; font-size: 14px; }
+.palette-list { display: flex; flex-direction: column; gap: 4px; max-height: 70vh; overflow-y: auto; }
+.palette-item { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: 7px 9px; color: #e7edf9; font-size: 13px; text-align: left; cursor: pointer; font-family: inherit; }
+.palette-item:hover { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.2); }
+.palette-item:active { transform: scale(0.98); }
+.palette-item .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; box-shadow: 0 0 0 2px rgba(0,0,0,.25) inset; }
+.palette-item .key { margin-left: auto; color: #8a8f98; font-size: 11px; }
+.palette-count { margin-top: 8px; font-size: 12px; color: #8a8f98; }
+
+.node-editor { margin-top: 10px; border-top: 1px solid rgba(255,255,255,.1); padding-top: 8px; }
+.node-editor summary { cursor: pointer; font-size: 13px; color: #c7c9cf; user-select: none; }
+.node-editor summary:hover { color: #fff; }
+.node-editor-body { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+.node-editor-body label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: #8a8f98; }
+.node-editor-body input[type=text] { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); border-radius: 6px; color: #e7edf9; padding: 5px 7px; font-size: 12px; font-family: inherit; }
+.node-editor-body input[type=color] { width: 100%; height: 26px; border: none; background: none; padding: 0; cursor: pointer; }
+.ne-rows { display: flex; flex-direction: column; gap: 4px; }
+.ne-row { display: grid; grid-template-columns: 1fr 54px 92px 18px; gap: 4px; align-items: center; }
+.ne-row input, .ne-row select { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); border-radius: 5px; color: #e7edf9; padding: 4px 5px; font-size: 11px; font-family: inherit; width: 100%; }
+.ne-row-remove { background: none; border: none; color: #e07070; cursor: pointer; font-size: 13px; padding: 0; }
+#ne-add-row { align-self: flex-start; background: none; border: 1px dashed rgba(255,255,255,.25); color: #c7c9cf; border-radius: 6px; padding: 4px 8px; font-size: 11px; cursor: pointer; font-family: inherit; }
+.ne-create { background: #3d7bf0; border: none; color: #fff; border-radius: 6px; padding: 7px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.ne-create:hover { background: #5b8def; }
+.ne-json { margin: 0; background: rgba(0,0,0,.35); border-radius: 6px; padding: 6px 8px; font-size: 10px; line-height: 1.4; color: #9fd15a; max-height: 120px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
