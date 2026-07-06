@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { GraphConfig, NodeTypeDef } from '../core/types';
 import type { NodeView } from '../core/NodeView';
+import type { PortRegistry } from '../core/PortRegistry';
 import { instantiateNodeType } from '../core/Graph';
 import { screenToWorld } from '../core/viewport';
 import type { InputController } from '../systems/InputController';
@@ -9,6 +10,7 @@ export interface PaletteDeps {
   scene: THREE.Scene;
   camera: THREE.OrthographicCamera;
   config: GraphConfig;
+  portRegistry: PortRegistry;
   nodes: NodeView[];
   input: InputController;
   listEl: HTMLElement;
@@ -42,9 +44,9 @@ export class Palette {
   }
 
   private beginDrag(typeKey: string, e: PointerEvent): void {
-    const { scene, camera, config, nodes, input } = this.deps;
+    const { scene, camera, config, portRegistry, nodes, input } = this.deps;
     const p = screenToWorld(camera, e.clientX, e.clientY);
-    const view = instantiateNodeType(scene, config, typeKey, p.x, p.y);
+    const view = instantiateNodeType(scene, config, portRegistry, typeKey, p.x, p.y);
     if (!view) return;
     nodes.push(view);
     this.updateCount();

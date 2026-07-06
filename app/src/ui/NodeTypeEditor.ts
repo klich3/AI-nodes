@@ -1,4 +1,4 @@
-import type { GraphConfig, NodeTypeDef, PortSide, RowDef } from '../core/types';
+import type { GraphConfig, NodeTypeDef, PortSide, PortRowDef, RowDef } from '../core/types';
 
 export interface NodeTypeEditorDeps {
   config: GraphConfig;
@@ -36,7 +36,7 @@ export class NodeTypeEditor {
     return el;
   }
 
-  private addRow(initial: Partial<RowDef> = {}): void {
+  private addRow(initial: Partial<PortRowDef> = {}): void {
     const row = document.createElement('div');
     row.className = 'ne-row';
 
@@ -95,7 +95,7 @@ export class NodeTypeEditor {
         const label = row.querySelector<HTMLInputElement>('.ne-row-label')!.value.trim();
         const side = row.querySelector<HTMLSelectElement>('.ne-row-side')!.value as PortSide;
         const type = row.querySelector<HTMLSelectElement>('.ne-row-type')!.value;
-        const def: RowDef = { label, side };
+        const def: PortRowDef = { label, side };
         if (type) def.type = type;
         return def;
       })

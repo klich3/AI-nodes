@@ -97,7 +97,17 @@ export class InputController {
     }
 
     let cur: THREE.Object3D | null = h;
-    while (cur && !cur.userData.port && !nodes.find((n) => n.group === cur)) cur = cur.parent;
+    while (
+      cur &&
+      !cur.userData.port &&
+      !cur.userData.checkbox &&
+      !cur.userData.segButton &&
+      !nodes.find((n) => n.group === cur)
+    ) cur = cur.parent;
+
+    if (cur?.userData?.checkbox) { cur.userData.checkbox.toggle(); return; }
+    if (cur?.userData?.segButton) { cur.userData.segButton.activate(); return; }
+
     const port = cur?.userData?.port;
 
     if (port?.kind === 'out') {

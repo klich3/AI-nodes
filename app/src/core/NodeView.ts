@@ -1,7 +1,22 @@
 import * as THREE from 'three';
-import { roundedRectShape, labelSprite, previewThumb } from './shapes';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import {
+  roundedRectShape,
+  roundedRectMesh,
+  labelSprite,
+  shadowMesh,
+  checkBadge,
+  menuDots,
+  linkIcon,
+  thumbGeneric,
+  thumbGrid,
+  thumbBars,
+  previewThumb,
+} from './shapes';
 import { hexToInt, DEFAULT_PORT_COLOR, type PortKind } from './colors';
-import type { GraphConfig, RowDef } from './types';
+import { CARD_PALETTE, hexToCss } from './constants';
+import type { PortRegistry } from './PortRegistry';
+import type { GraphConfig, RowDef, PortRowDef, ThumbKind } from './types';
 
 export interface PortUserData {
   node: NodeView;
@@ -11,6 +26,8 @@ export interface PortUserData {
 }
 
 export type PortObject = THREE.Group & { userData: { port: PortUserData } };
+export type CheckboxObject = THREE.Mesh & { userData: { checkbox: { toggle: () => void; readonly checked: boolean } } };
+export type SegButtonObject = THREE.Mesh & { userData: { segButton: { activate: () => void } } };
 
 export interface NodeViewOptions {
   x: number;
@@ -19,7 +36,7 @@ export interface NodeViewOptions {
   title: string;
   color: number;
   rows?: RowDef[];
-  withThumb?: boolean;
+  thumb?: ThumbKind;
 }
 
 function resolvePortColor(config: GraphConfig, type: string | undefined, kind: PortKind): number {
@@ -27,9 +44,54 @@ function resolvePortColor(config: GraphConfig, type: string | undefined, kind: P
   return entry ? hexToInt(entry.color) : DEFAULT_PORT_COLOR[kind];
 }
 
-// Representa un nodo del editor: caja con cabecera de color, filas de puertos in/out.
-// Recibe `scene`/`config` explícitamente (en vez de closures globales como en los
-// prototipos HTML) para que la clase sea autocontenida y fácil de testear/reutilizar.
+function blockHeight(b: RowDef): number {
+  if (b.kind === 'section') return 20;
+  if (b.kind === 'pair') return 44;
+  if (b.kind === 'checkbox') return 22;
+  if (b.kind === 'segmented') return 30;
+  return 26; // port
+}
+
+function buildThumb(kind: ThumbKind | undefined, color: number): THREE.Mesh {
+  if (kind === 'grid') return thumbGrid(hexToCss(color));
+  if (kind === 'bars') return thumbBars();
+  if (kind === 'random') return previewThumb(Math.random());
+  return thumbGeneric(color);
+}
+
+function withVertexColor(geometry: THREE.BufferGeometry, color: number): THREE.BufferGeometry {
+  const count = geometry.attributes.position.count;
+  const colors = new Float32Array(count * 3);
+  const c = new THREE.Color(color);
+  for (let i = 0; i < count; i++) {
+    colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
+  }
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  return geometry;
+}
+
+// El fondo, la cabecera, la máscara que tapa su redondeo inferior y la línea
+// divisoria bajo la miniatura son 4 formas opacas de color fijo: en vez de 4
+// mallas (4 draw calls) por nodo, se combinan en una única geometría con color
+// por vértice (mergeGeometries) y un solo material — 1 draw call para todo el
+// "chasis" de la tarjeta. Los elementos con textura propia (título, iconos,
+// miniatura, filas) o color dinámico (icono de tipo) se quedan aparte.
+function buildChromeMesh(w: number, h: number, headerH: number, thumbH: number): THREE.Mesh {
+  const body = withVertexColor(new THREE.ShapeGeometry(roundedRectShape(w, h, 12), 24), CARD_PALETTE.bg);
+  const header = withVertexColor(new THREE.ShapeGeometry(roundedRectShape(w, headerH, 12), 24), CARD_PALETTE.header);
+  header.translate(0, h / 2 - headerH / 2, 1);
+  const headerMask = withVertexColor(new THREE.PlaneGeometry(w, 14), CARD_PALETTE.header);
+  headerMask.translate(0, h / 2 - headerH + 6, 0.9);
+  const divider = withVertexColor(new THREE.PlaneGeometry(w - 4, 1), CARD_PALETTE.border);
+  divider.translate(0, h / 2 - headerH - thumbH, 2);
+  const merged = mergeGeometries([body, header, headerMask, divider], false);
+  return new THREE.Mesh(merged, new THREE.MeshBasicMaterial({ vertexColors: true }));
+}
+
+// Tarjeta de nodo con cabecera (icono + título + insignia + menú), sombra, miniatura
+// y un cuerpo de "bloques": filas de puerto normales más secciones, pares de campo
+// enlazados, checkboxes y grupos segmentados (estos tres últimos son clicables de
+// verdad vía raycasting, ver InputController). Estilo tomado de sample4.html.
 export class NodeView {
   readonly group: THREE.Group;
   readonly w: number;
@@ -38,75 +100,225 @@ export class NodeView {
   vy = 0;
   readonly inPorts: PortObject[] = [];
   readonly outPorts: PortObject[] = [];
-  readonly mainIn: PortObject | null;
-  readonly mainOut: PortObject | null;
 
-  constructor(scene: THREE.Scene, config: GraphConfig, opts: NodeViewOptions) {
-    const { x, y, w = 200, title, color, rows = [], withThumb = false } = opts;
-    const rowH = 30;
-    const headerH = 34;
-    const h = headerH + rows.length * rowH + 20;
+  constructor(scene: THREE.Scene, config: GraphConfig, portRegistry: PortRegistry, opts: NodeViewOptions) {
+    const { x, y, w = 236, title, color, rows = [], thumb } = opts;
+    const headerH = 42, thumbH = 76, padTop = 14, padBottom = 16, rowGap = 6;
+
+    const heights = rows.map(blockHeight);
+    const contentH = heights.reduce((s, v) => s + v + rowGap, 0);
+    const h = headerH + thumbH + padTop + contentH + padBottom;
+
+    this.w = w;
+    this.h = h;
+    this.portRegistry = portRegistry;
 
     this.group = new THREE.Group();
     this.group.position.set(x, y, 0);
     scene.add(this.group);
 
-    this.w = w;
-    this.h = h;
+    const shadow = shadowMesh(w, h);
+    shadow.position.set(5, -12, -6);
+    this.group.add(shadow);
 
-    const body = new THREE.Mesh(
-      new THREE.ShapeGeometry(roundedRectShape(w, h, 10), 24),
-      new THREE.MeshBasicMaterial({ color: 0x2c2e33 })
-    );
-    this.group.add(body);
+    this.group.add(buildChromeMesh(w, h, headerH, thumbH));
 
-    const header = new THREE.Mesh(
-      new THREE.ShapeGeometry(roundedRectShape(w, headerH, 10), 24),
-      new THREE.MeshBasicMaterial({ color })
-    );
-    header.position.set(0, h / 2 - headerH / 2, 1);
-    this.group.add(header);
+    const icon = roundedRectMesh(14, 14, 4, color);
+    icon.position.set(-w / 2 + 22, h / 2 - headerH / 2, 2);
+    this.group.add(icon);
 
-    const titleSprite = labelSprite(title, { size: 54, weight: 800, color: '#14161a' });
-    titleSprite.scale.set(195, 34, 1);
-    titleSprite.position.set(-w / 2 + 14, h / 2 - headerH / 2, 2);
+    const titleSprite = labelSprite(title, { size: 40, weight: 700, scaleW: 150, scaleH: 26, canvasW: 480, canvasH: 90 });
+    titleSprite.position.set(-w / 2 + 34, h / 2 - headerH / 2, 2);
     this.group.add(titleSprite);
 
-    if (withThumb) {
-      const thumb = previewThumb(Math.random());
-      thumb.position.set(w / 2 - 24, h / 2 - headerH / 2, 2);
-      this.group.add(thumb);
-    }
+    const badge = checkBadge();
+    badge.position.set(w / 2 - 34, h / 2 - headerH / 2, 2);
+    this.group.add(badge);
 
-    let cursorY = h / 2 - headerH - 20;
-    rows.forEach((row) => {
-      if (row.label) {
-        const sp = labelSprite(row.label, { size: 46, weight: 500, color: '#c7c9cf' });
-        sp.scale.set(170, 26, 1);
-        sp.position.set(-w / 2 + 26, cursorY, 2);
-        this.group.add(sp);
-      }
-      if (row.side === 'in' || row.side === 'both') {
-        this.inPorts.push(this.makePort(-w / 2, cursorY, resolvePortColor(config, row.type, 'in'), 'in', row.label || ''));
-      }
-      if (row.side === 'out' || row.side === 'both') {
-        this.outPorts.push(this.makePort(w / 2, cursorY, resolvePortColor(config, row.type, 'out'), 'out', row.label || ''));
-      }
-      cursorY -= rowH;
+    const menu = menuDots();
+    menu.position.set(w / 2 - 14, h / 2 - headerH / 2, 2);
+    this.group.add(menu);
+
+    const thumbMesh = buildThumb(thumb, color);
+    thumbMesh.scale.set(1.35, 1.35, 1);
+    thumbMesh.position.set(0, h / 2 - headerH - thumbH / 2, 2);
+    this.group.add(thumbMesh);
+
+    let cursorY = h / 2 - headerH - thumbH - padTop;
+    rows.forEach((row, i) => {
+      const rh = heights[i];
+      this.buildBlock(config, row, cursorY - rh / 2, w);
+      cursorY -= rh + rowGap;
     });
+  }
 
-    this.mainOut = this.outPorts[0] ?? null;
-    this.mainIn = this.inPorts[0] ?? null;
+  private readonly portRegistry: PortRegistry;
+
+  private buildBlock(config: GraphConfig, block: RowDef, midY: number, w: number): void {
+    if (block.kind === 'section') {
+      const sp = labelSprite(block.label.toUpperCase(), { size: 30, weight: 700, color: CARD_PALETTE.muted, scaleW: 150, scaleH: 16, canvasW: 320, canvasH: 60 });
+      sp.position.set(-w / 2 + 22, midY, 2);
+      this.group.add(sp);
+      return;
+    }
+    if (block.kind === 'pair') {
+      this.buildPair(config, block, midY, w);
+      return;
+    }
+    if (block.kind === 'checkbox') {
+      this.buildCheckbox(block, midY, w);
+      return;
+    }
+    if (block.kind === 'segmented') {
+      this.buildSegmented(block, midY, w);
+      return;
+    }
+    this.buildPortRow(config, block, midY, w);
+  }
+
+  private buildPortRow(config: GraphConfig, row: PortRowDef, midY: number, w: number): void {
+    if (row.label) {
+      const sp = labelSprite(row.label, { size: 40, weight: 500, color: '#c7c9cf', scaleW: 150, scaleH: 22, canvasW: 480, canvasH: 90 });
+      sp.position.set(-w / 2 + 22, midY, 2);
+      this.group.add(sp);
+    }
+    if (row.side === 'in' || row.side === 'both') {
+      this.inPorts.push(this.makePort(-w / 2, midY, resolvePortColor(config, row.type, 'in'), 'in', row.label || ''));
+    }
+    if (row.side === 'out' || row.side === 'both') {
+      this.outPorts.push(this.makePort(w / 2, midY, resolvePortColor(config, row.type, 'out'), 'out', row.label || ''));
+    }
+  }
+
+  private buildPair(config: GraphConfig, block: Extract<RowDef, { kind: 'pair' }>, midY: number, w: number): void {
+    const chipW = (w - 44 - 24) / 2;
+    const mk = (field: typeof block.a, cx: number) => {
+      const g = new THREE.Group();
+      g.position.set(cx, midY, 2);
+      const lbl = labelSprite(field.label, { size: 26, weight: 500, color: CARD_PALETTE.muted, scaleW: chipW, scaleH: 12, canvasW: 220, canvasH: 50 });
+      lbl.center.set(0, 0.5);
+      lbl.position.set(-chipW / 2, 12, 0);
+      g.add(lbl);
+      const chip = roundedRectMesh(chipW, 20, 5, 0x33353c);
+      chip.position.set(0, -4, 0);
+      g.add(chip);
+      const val = labelSprite(String(field.value), { size: 30, weight: 600, color: CARD_PALETTE.text, scaleW: chipW - 10, scaleH: 14, canvasW: 220, canvasH: 60 });
+      val.center.set(0, 0.5);
+      val.position.set(-chipW / 2 + 8, -4, 0.1);
+      g.add(val);
+      this.group.add(g);
+
+      if (field.side === 'in' || field.side === 'both') {
+        this.inPorts.push(this.makePort(cx - chipW / 2 - 10, midY, resolvePortColor(config, field.type, 'in'), 'in', field.label));
+      }
+      if (field.side === 'out' || field.side === 'both') {
+        this.outPorts.push(this.makePort(cx + chipW / 2 + 10, midY, resolvePortColor(config, field.type, 'out'), 'out', field.label));
+      }
+    };
+    mk(block.a, -w / 2 + 22 + chipW / 2);
+    mk(block.b, w / 2 - 22 - chipW / 2);
+    const link = linkIcon();
+    link.position.set(0, midY + 4, 2);
+    this.group.add(link);
+  }
+
+  private buildCheckbox(block: Extract<RowDef, { kind: 'checkbox' }>, midY: number, w: number): void {
+    const size = 15;
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d')!;
+    const state = { checked: !!block.checked };
+    const tex = new THREE.CanvasTexture(canvas);
+    const redraw = () => {
+      ctx.clearRect(0, 0, 64, 64);
+      const r = 12;
+      ctx.fillStyle = state.checked ? hexToCss(CARD_PALETTE.accent) : '#33353c';
+      ctx.strokeStyle = state.checked ? hexToCss(CARD_PALETTE.accent) : '#4a4d55';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(8 + r, 8);
+      ctx.arcTo(56, 8, 56, 56, r);
+      ctx.arcTo(56, 56, 8, 56, r);
+      ctx.arcTo(8, 56, 8, 8, r);
+      ctx.arcTo(8, 8, 56, 8, r);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      if (state.checked) {
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 6;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(18, 33);
+        ctx.lineTo(27, 42);
+        ctx.lineTo(48, 20);
+        ctx.stroke();
+      }
+      tex.needsUpdate = true;
+    };
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(size, size), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
+    mesh.position.set(-w / 2 + 22 + size / 2, midY, 2);
+    mesh.userData.checkbox = {
+      toggle: () => { state.checked = !state.checked; redraw(); },
+      get checked() { return state.checked; },
+    };
+    this.group.add(mesh);
+    redraw();
+
+    const lbl = labelSprite(block.label, { size: 40, weight: 500, color: '#c7c9cf', scaleW: 150, scaleH: 22, canvasW: 480, canvasH: 90 });
+    lbl.position.set(-w / 2 + 22 + size + 8, midY, 2);
+    this.group.add(lbl);
+  }
+
+  private buildSegmented(block: Extract<RowDef, { kind: 'segmented' }>, midY: number, w: number): void {
+    const n = block.options.length;
+    const gap = 3;
+    const segW = (w - 44 - gap * (n - 1)) / n;
+    const state = { active: block.active ?? 0 };
+    const redraws: Array<() => void> = [];
+    block.options.forEach((label, i) => {
+      const cx = -w / 2 + 22 + segW / 2 + i * (segW + gap);
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 64;
+      const ctx = canvas.getContext('2d')!;
+      const tex = new THREE.CanvasTexture(canvas);
+      const redraw = () => {
+        const active = state.active === i;
+        ctx.clearRect(0, 0, 128, 64);
+        ctx.fillStyle = active ? hexToCss(CARD_PALETTE.accent) : '#2f3138';
+        ctx.beginPath();
+        ctx.roundRect(2, 8, 124, 48, 8);
+        ctx.fill();
+        ctx.fillStyle = active ? '#ffffff' : CARD_PALETTE.muted;
+        ctx.font = '600 30px system-ui, Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, 64, 34);
+        tex.needsUpdate = true;
+      };
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(segW, 24), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
+      mesh.position.set(cx, midY, 2);
+      mesh.userData.segButton = { activate: () => { state.active = i; redraws.forEach((fn) => fn()); } };
+      this.group.add(mesh);
+      redraws.push(redraw);
+      redraw();
+    });
   }
 
   private makePort(x: number, y: number, color: number, kind: PortKind, label: string): PortObject {
     const g = new THREE.Group() as PortObject;
     g.position.set(x, y, 3);
     g.userData.port = { node: this, kind, label, color };
-    const c1 = new THREE.Mesh(new THREE.CircleGeometry(6, 24), new THREE.MeshBasicMaterial({ color }));
-    const c2 = new THREE.Mesh(new THREE.CircleGeometry(9, 24), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.25 }));
-    g.add(c2, c1);
+    // El halo (c2) es el mesh individual que detecta el raycaster: barato y ya
+    // cubre el área clicable. El disco sólido interior vive en el InstancedMesh
+    // compartido (PortRegistry) — mismo área visual, sin coste de otro draw call.
+    const c2 = new THREE.Mesh(new THREE.CircleGeometry(9, 24), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.22 }));
+    g.add(c2);
     this.group.add(g);
+    this.portRegistry.register(g, color);
     return g;
   }
 

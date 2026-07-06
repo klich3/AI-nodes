@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { NodeView } from './NodeView';
 import { Cable, type CableContext } from './Cable';
 import { hexToInt } from './colors';
+import type { PortRegistry } from './PortRegistry';
 import type { GraphConfig } from './types';
 
 // Instancia un NodeView a partir de un tipo del catálogo (config.nodeTypes). La usan
@@ -10,6 +11,7 @@ import type { GraphConfig } from './types';
 export function instantiateNodeType(
   scene: THREE.Scene,
   config: GraphConfig,
+  portRegistry: PortRegistry,
   typeKey: string,
   x: number,
   y: number,
@@ -20,14 +22,14 @@ export function instantiateNodeType(
     console.warn(`Tipo de nodo desconocido: ${typeKey}`);
     return null;
   }
-  return new NodeView(scene, config, {
+  return new NodeView(scene, config, portRegistry, {
     x,
     y,
-    w: w ?? 210,
+    w,
     title: def.title,
     color: hexToInt(def.color),
     rows: def.rows,
-    withThumb: !!def.withThumb,
+    thumb: def.thumb,
   });
 }
 
@@ -36,11 +38,11 @@ export interface BuiltGraph {
   cables: Cable[];
 }
 
-export function buildGraph(scene: THREE.Scene, config: GraphConfig): BuiltGraph {
+export function buildGraph(scene: THREE.Scene, config: GraphConfig, portRegistry: PortRegistry): BuiltGraph {
   const nodeMap = new Map<string, NodeView>();
 
   config.graph.nodes.forEach((n) => {
-    const view = instantiateNodeType(scene, config, n.type, n.x, n.y, n.w);
+    const view = instantiateNodeType(scene, config, portRegistry, n.type, n.x, n.y, n.w);
     if (view) nodeMap.set(n.id, view);
   });
 

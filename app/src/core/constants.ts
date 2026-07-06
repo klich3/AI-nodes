@@ -15,3 +15,18 @@ export const NODE_GAP = 26;
 // Decaimiento de velocidad por frame para el deslizamiento tipo "gota de agua"
 // al reacomodar nodos que se solapan.
 export const MOTION_DAMPING = 0.86;
+
+// Paleta de la tarjeta de nodo (sample4.html): fondo, cabecera, borde y acento,
+// como colores THREE (hex int) y su equivalente CSS para dibujar en canvas 2D.
+export const CARD_PALETTE = {
+  bg: 0x24262b,
+  header: 0x2b2d33,
+  border: 0x3a3d44,
+  accent: 0x5b8def,
+  text: '#e7edf9',
+  muted: '#9aa0ab',
+} as const;
+
+export function hexToCss(hex: number): string {
+  return '#' + hex.toString(16).padStart(6, '0');
+}

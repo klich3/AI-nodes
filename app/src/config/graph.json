@@ -8,13 +8,17 @@
   },
   "nodeTypes": {
     "box": {
-      "title": "Box", "color": "#1fb6a8",
+      "title": "Box", "color": "#1fb6a8", "thumb": "box",
       "rows": [
         { "label": "Mesh", "side": "out", "type": "mesh" },
         { "label": "MRS", "side": "out", "type": "transform" },
+        { "kind": "section", "label": "Size" },
+        { "kind": "pair",
+          "a": { "label": "Width", "value": 30, "side": "in" },
+          "b": { "label": "Height", "value": 30, "side": "in" }
+        },
         { "label": "Length", "side": "in" },
-        { "label": "Width", "side": "in" },
-        { "label": "Height", "side": "in" }
+        { "kind": "checkbox", "label": "Rotation", "checked": false }
       ]
     },
     "coordinate": {
@@ -45,26 +49,29 @@
       ]
     },
     "transform": {
-      "title": "Transform", "color": "#d85c8a",
+      "title": "Transform", "color": "#d85c8a", "thumb": "grid",
       "rows": [
         { "label": "Input", "side": "in", "type": "transform" },
         { "label": "Scale", "side": "in", "type": "scalar" },
         { "label": "Vector Position", "side": "in", "type": "transform" },
-        { "label": "Rotation", "side": "in", "type": "transform" },
+        { "kind": "checkbox", "label": "Offset", "checked": false },
+        { "kind": "checkbox", "label": "Resize", "checked": true },
         { "label": "Coordinate", "side": "in", "type": "normal" },
         { "label": "Output", "side": "out", "type": "mesh" }
       ]
     },
     "outputMesh": {
-      "title": "Output mesh", "color": "#e0545f",
+      "title": "Output mesh", "color": "#e0545f", "thumb": "bars",
       "rows": [
         { "label": "Mesh", "side": "in", "type": "mesh" },
         { "label": "MRS", "side": "in", "type": "transform" },
+        { "kind": "section", "label": "Align content" },
+        { "kind": "segmented", "options": ["◧", "▣", "◨"], "active": 1 },
         { "label": "Mesh", "side": "out", "type": "mesh" }
       ]
     },
     "noise": {
-      "title": "Noise", "color": "#9fd15a", "withThumb": true,
+      "title": "Noise", "color": "#9fd15a", "thumb": "random",
       "rows": [
         { "label": "Noise", "side": "both", "type": "mesh" },
         { "label": "Seed", "side": "in" },
