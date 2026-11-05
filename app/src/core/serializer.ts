@@ -9,7 +9,7 @@ Desc: Exportacion e importacion de grafos como JSON
 */
 import type { Cable } from "./Cable";
 import type { NodeView } from "./NodeView";
-import type { GraphConfig, GraphNodeDef, GraphEdgeDef } from "./types";
+import type { GraphNodeDef, GraphEdgeDef } from "./types";
 
 // Exporta el estado actual del grafo (nodos y cables) como un objeto JSON
 // compatible con GraphConfig.graph (nodes + edges).
