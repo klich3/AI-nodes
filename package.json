@@ -1,0 +1,12 @@
+{
+	"name": "node-editor-monorepo",
+	"private": true,
+	"workspaces": ["packages/*", "examples/*"],
+	"scripts": {
+		"build:core": "npm run build -w @node-editor/core",
+		"typecheck:core": "npm run typecheck -w @node-editor/core",
+		"dev:vue": "npm run dev -w example-vite-vue",
+		"dev:react": "npm run dev -w example-vite-react",
+		"dev:nuxt": "npm run dev -w example-nuxt"
+	}
+}

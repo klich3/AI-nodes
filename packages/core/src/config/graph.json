@@ -1,0 +1,116 @@
+{
+  "portTypes": {
+    "mesh":      { "color": "#8ee06a" },
+    "transform": { "color": "#d85c8a" },
+    "scalar":    { "color": "#e0545f" },
+    "normal":    { "color": "#4aa8e0" },
+    "texture":   { "color": "#e6d34a" }
+  },
+  "nodeTypes": {
+    "box": {
+      "title": "Box", "color": "#1fb6a8", "thumb": "box",
+      "rows": [
+        { "label": "Mesh", "side": "out", "type": "mesh" },
+        { "label": "MRS", "side": "out", "type": "transform" },
+        { "kind": "section", "label": "Size" },
+        { "kind": "pair",
+          "a": { "label": "Width", "value": 30, "side": "in" },
+          "b": { "label": "Height", "value": 30, "side": "in" }
+        },
+        { "label": "Length", "side": "in" },
+        { "kind": "checkbox", "label": "Rotation", "checked": false }
+      ]
+    },
+    "coordinate": {
+      "title": "Coordinate", "color": "#2a8fd8",
+      "rows": [
+        { "label": "Surface Normal", "side": "out", "type": "normal" }
+      ]
+    },
+    "parameterReal": {
+      "title": "Parameter", "color": "#d8484f",
+      "rows": [
+        { "label": "Real", "side": "out", "type": "scalar" }
+      ]
+    },
+    "parameterVector": {
+      "title": "Parameter", "color": "#c14f89",
+      "rows": [
+        { "label": "Vector", "side": "out", "type": "transform" }
+      ]
+    },
+    "texture": {
+      "title": "Texture", "color": "#cbbe3a",
+      "rows": [
+        { "label": "U", "side": "in" },
+        { "label": "V", "side": "in" },
+        { "label": "W", "side": "in" },
+        { "label": "Bimp", "side": "out", "type": "texture" }
+      ]
+    },
+    "transform": {
+      "title": "Transform", "color": "#d85c8a", "thumb": "grid",
+      "rows": [
+        { "label": "Input", "side": "in", "type": "transform" },
+        { "label": "Scale", "side": "in", "type": "scalar" },
+        { "label": "Vector Position", "side": "in", "type": "transform" },
+        { "kind": "checkbox", "label": "Offset", "checked": false },
+        { "kind": "checkbox", "label": "Resize", "checked": true },
+        { "label": "Coordinate", "side": "in", "type": "normal" },
+        { "label": "Output", "side": "out", "type": "mesh" }
+      ]
+    },
+    "outputMesh": {
+      "title": "Output mesh", "color": "#e0545f", "thumb": "bars",
+      "rows": [
+        { "label": "Mesh", "side": "in", "type": "mesh" },
+        { "label": "MRS", "side": "in", "type": "transform" },
+        { "kind": "section", "label": "Align content" },
+        { "kind": "segmented", "options": ["◧", "▣", "◨"], "active": 1 },
+        { "label": "Mesh", "side": "out", "type": "mesh" }
+      ]
+    },
+    "noise": {
+      "title": "Noise", "color": "#9fd15a", "thumb": "random",
+      "rows": [
+        { "label": "Noise", "side": "both", "type": "mesh" },
+        { "label": "Seed", "side": "in" },
+        { "label": "Scale", "side": "in" },
+        { "label": "Roughness", "side": "in" },
+        { "label": "Strength", "side": "in", "type": "transform" }
+      ]
+    },
+    "selection": {
+      "title": "Selection", "color": "#6fbf5c",
+      "rows": [
+        { "label": "Volume", "side": "in" },
+        { "label": "Texture Map", "side": "in", "type": "texture" },
+        { "label": "Out", "side": "out", "type": "mesh" }
+      ]
+    }
+  },
+  "graph": {
+    "nodes": [
+      { "id": "box1", "type": "box", "x": -420, "y": 160 },
+      { "id": "coord1", "type": "coordinate", "x": -690, "y": -60 },
+      { "id": "paramReal1", "type": "parameterReal", "x": -420, "y": -140 },
+      { "id": "paramVec1", "type": "parameterVector", "x": -420, "y": -340 },
+      { "id": "transform1", "type": "transform", "x": -140, "y": 60 },
+      { "id": "texture1", "type": "texture", "x": -140, "y": -320 },
+      { "id": "output1", "type": "outputMesh", "x": 150, "y": 160 },
+      { "id": "selection1", "type": "selection", "x": 430, "y": -60 },
+      { "id": "noise1", "type": "noise", "x": 430, "y": 220 }
+    ],
+    "edges": [
+      { "from": ["box1", "Mesh"], "to": ["output1", "Mesh"] },
+      { "from": ["box1", "MRS"], "to": ["transform1", "Input"] },
+      { "from": ["paramReal1", "Real"], "to": ["transform1", "Scale"] },
+      { "from": ["paramVec1", "Vector"], "to": ["transform1", "Vector Position"] },
+      { "from": ["coord1", "Surface Normal"], "to": ["transform1", "Coordinate"] },
+      { "from": ["transform1", "Output"], "to": ["output1", "MRS"] },
+      { "from": ["output1", "Mesh"], "to": ["noise1", "Noise"] },
+      { "from": ["texture1", "Bimp"], "to": ["selection1", "Texture Map"] },
+      { "from": ["selection1", "Out"], "to": ["noise1", "Strength"] }
+    ]
+  }
+}

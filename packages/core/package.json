@@ -1,0 +1,40 @@
+{
+	"name": "@node-editor/core",
+	"version": "0.1.0",
+	"description": "Motor de editor de nodos 2D sobre Three.js: cables con física de cuerda (gravedad/balanceo), enchufes SVG con imán por color de tipo, tarjetas de nodo configurables por JSON. Sin dependencia de framework.",
+	"type": "module",
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"require": "./dist/index.cjs"
+		},
+		"./config": {
+			"types": "./dist/config/export.d.ts",
+			"import": "./dist/config/export.js",
+			"require": "./dist/config/export.cjs"
+		}
+	},
+	"files": ["dist"],
+	"sideEffects": ["./dist/style.*", "./dist/index.*"],
+	"scripts": {
+		"build": "tsup",
+		"typecheck": "tsc --noEmit",
+		"prepublishOnly": "npm run build"
+	},
+	"keywords": ["node-editor", "threejs", "graph-editor", "flow-editor", "webgl"],
+	"license": "MIT",
+	"author": "Anton Sychev <anton@sychev.xyz>",
+	"peerDependencies": {
+		"three": ">=0.160.0"
+	},
+	"devDependencies": {
+		"@types/three": "^0.166.0",
+		"three": "^0.166.1",
+		"tsup": "^8.3.5",
+		"typescript": "^5.5.4"
+	}
+}

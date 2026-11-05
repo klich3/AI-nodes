@@ -1,0 +1,17 @@
+{
+	"name": "example-nuxt",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "nuxt dev --port 5403",
+		"build": "nuxt build"
+	},
+	"dependencies": {
+		"@node-editor/core": "*",
+		"@node-editor/nuxt": "*"
+	},
+	"devDependencies": {
+		"nuxt": "^3.13.0",
+		"three": "^0.170.0"
+	}
+}

@@ -1,0 +1,33 @@
+{
+	"name": "@node-editor/nuxt",
+	"version": "0.1.0",
+	"description": "Módulo Nuxt 3 para el editor de nodos Three.js: auto-importa <NodeEditor> (ClientOnly) y registra useNodeEditor",
+	"license": "MIT",
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./dist/types.d.ts",
+			"import": "./dist/module.mjs",
+			"require": "./dist/module.cjs"
+		}
+	},
+	"main": "./dist/module.cjs",
+	"types": "./dist/types.d.ts",
+	"files": ["dist"],
+	"scripts": {
+		"build": "nuxt-module-build build",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@node-editor/core": "*",
+		"@node-editor/vue": "*",
+		"@nuxt/kit": "^3.13.0"
+	},
+	"devDependencies": {
+		"@nuxt/module-builder": "^0.8.0",
+		"@nuxt/schema": "^3.13.0",
+		"nuxt": "^3.13.0",
+		"typescript": "^5.5.0",
+		"vue": "^3.5.0"
+	}
+}

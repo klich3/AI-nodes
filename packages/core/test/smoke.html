@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="es">
+	<head>
+		<meta charset="UTF-8" />
+		<title>core smoke test</title>
+		<style>
+			html, body { margin: 0; height: 100%; }
+			#host { width: 100vw; height: 100vh; }
+		</style>
+	</head>
+	<body>
+		<div id="host"></div>
+		<script type="module">
+			import * as THREE from "three";
+			import { NodeEditorEngine, defaultGraphConfig } from "../src/index.ts";
+			window.__engine = new NodeEditorEngine(document.getElementById("host"), {
+				config: structuredClone(defaultGraphConfig),
+				theme: "dark",
+			});
+			window.__THREE = THREE;
+		</script>
+	</body>
+</html>
